@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"io"
 	"os"
 	"os/exec"
@@ -74,7 +75,7 @@ func Run(ctx context.Context, spec Spec, hooks Hooks) Result {
 		return res
 	}
 	if len(spec.Argv) == 0 {
-		res.LaunchErr = "comando vazio"
+		res.LaunchErr = i18n.T("runner.empty_command")
 		return finish(ExitLaunch)
 	}
 
@@ -158,11 +159,11 @@ func Run(ctx context.Context, spec Spec, hooks Hooks) Result {
 		case <-ticker.C:
 			silent := time.Since(last)
 			if spec.IdleKill > 0 && silent >= spec.IdleKill {
-				code = stop(ExitTimeout, fmt.Sprintf("timeout: sem saída há %ds, ferramenta encerrada", int(silent.Seconds())))
+				code = stop(ExitTimeout, i18n.T("runner.idle_timeout", int(silent.Seconds())))
 				continue
 			}
 			if spec.MaxRun > 0 && time.Since(res.Start) >= spec.MaxRun {
-				code = stop(ExitTimeout, fmt.Sprintf("timeout: sessão passou do tempo máximo de %s, ferramenta encerrada", spec.MaxRun))
+				code = stop(ExitTimeout, i18n.T("runner.max_timeout", spec.MaxRun))
 				continue
 			}
 			if spec.Heartbeat > 0 && silent >= spec.Heartbeat && time.Since(lastBeat) >= spec.Heartbeat && hooks.OnIdle != nil {
@@ -170,7 +171,7 @@ func Run(ctx context.Context, spec Spec, hooks Hooks) Result {
 				hooks.OnIdle(silent)
 			}
 		case <-ctx.Done():
-			code = stop(ExitInterrupted, "interrompido pelo usuário")
+			code = stop(ExitInterrupted, i18n.T("runner.interrupted"))
 		case err := <-waited:
 			if lines != nil { // flush what is still buffered; nil means it was already drained
 				for line := range lines {

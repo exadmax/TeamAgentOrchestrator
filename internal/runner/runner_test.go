@@ -82,7 +82,7 @@ func TestRunIdleKill(t *testing.T) {
 	beats := 0
 	start := time.Now()
 	res := Run(context.Background(), spec, Hooks{OnIdle: func(time.Duration) { beats++ }})
-	if res.Exit != ExitTimeout || !strings.Contains(res.Tail, "timeout") {
+	if res.Exit != ExitTimeout || !strings.Contains(res.Tail, "Timeout") {
 		t.Fatalf("result = %+v", res)
 	}
 	if beats == 0 || time.Since(start) > 10*time.Second {
@@ -110,7 +110,7 @@ func TestRunMaxRun(t *testing.T) {
 	spec := fake(t, "chatty")
 	spec.MaxRun = 2 * time.Second
 	res := Run(context.Background(), spec, Hooks{})
-	if res.Exit != ExitTimeout || !strings.Contains(res.Tail, "tempo máximo") {
+	if res.Exit != ExitTimeout || !strings.Contains(res.Tail, "maximum duration") {
 		t.Fatalf("result = %+v", res)
 	}
 }

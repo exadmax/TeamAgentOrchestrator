@@ -6,11 +6,11 @@ version: '3'
 # This information is used to generate the build assets.
 info:
   companyName: "Diogo Góes Zanetti" # The name of the company
-  productName: "TeamAgent Orquestrador" # The name of the application
+  productName: "TeamAgent Orchestrator" # The name of the application
   productIdentifier: "com.exadmax.teamagent" # The unique product identifier
-  description: "Orquestrador de times de agentes de IA" # The application description
+  description: "Orchestrator for teams of AI coding agents" # The application description
   copyright: "(c) 2026, Diogo Góes Zanetti" # Copyright text
-  comments: "TeamAgent Orquestrador" # Comments
+  comments: "TeamAgent Orchestrator" # Comments
   version: "0.3.0" # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension

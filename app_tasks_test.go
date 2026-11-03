@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/tasks"
 )
 
@@ -20,6 +21,9 @@ func TestParseVerdict(t *testing.T) {
 		{"mudancas - renomear a função", false, "renomear a função", true},
 		{"APROVADO\n...depois de olhar melhor:\nMUDANÇAS: faltou o README", false, "faltou o README", true},
 		{"Parece bom, mas não sei.", false, "", false},
+		{"Checked the tests.\nAPPROVED", true, "", true},
+		{"> **CHANGES:** missing the timeout test", false, "missing the timeout test", true},
+		{"APPROVED\nthen, looking again:\nCHANGES: README is missing", false, "README is missing", true},
 	} {
 		approve, note, ok := parseVerdict(c.text)
 		if approve != c.approve || note != c.note || ok != c.ok {
@@ -28,12 +32,21 @@ func TestParseVerdict(t *testing.T) {
 	}
 }
 
+// The prompt follows the language: English by default, Portuguese when chosen.
 func TestTaskPromptCarriesContext(t *testing.T) {
-	p := taskPrompt(tasks.Task{ID: "T007", Title: "Portar logs", Done: "go test passa", Summary: "metade feita",
-		Verdicts: []string{"revisor:changes"}, History: []tasks.Event{{By: "revisor", What: "revisão: faltou teste"}}}, "Resposta do Diogo: use slog")
-	for _, want := range []string{"T007", "Portar logs", "go test passa", "metade feita", "pediu mudanças", "faltou teste", "use slog", "UMA pergunta"} {
-		if !strings.Contains(p, want) {
-			t.Errorf("prompt sem %q:\n%s", want, p)
+	defer i18n.Set(i18n.EN)
+	tk := tasks.Task{ID: "T007", Title: "Portar logs", Done: "go test passa", Summary: "metade feita",
+		Verdicts: []string{"revisor:changes"}, History: []tasks.Event{{By: "revisor", What: "revisão: faltou teste"}}}
+	for lang, phrases := range map[string][]string{
+		i18n.EN: {"asked for changes", "ONE question", "Done when"},
+		i18n.PT: {"pediu mudanças", "UMA pergunta", "Pronto quando"},
+	} {
+		_ = i18n.Set(lang)
+		p := taskPrompt(tk, "answer: use slog")
+		for _, want := range append([]string{"T007", "Portar logs", "go test passa", "metade feita", "faltou teste", "use slog"}, phrases...) {
+			if !strings.Contains(p, want) {
+				t.Errorf("%s prompt without %q:\n%s", lang, want, p)
+			}
 		}
 	}
 }

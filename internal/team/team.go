@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/fsx"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,7 +66,7 @@ func Load(dir string) (t *Team, ok bool, err error) {
 	}
 	t = &Team{}
 	if err := json.Unmarshal(data, t); err != nil {
-		return nil, false, fmt.Errorf("%s: %w", FileName, err)
+		return nil, false, i18n.Err("team.decode", FileName, err)
 	}
 	return t, true, t.Validate()
 }
@@ -91,10 +92,10 @@ func (t *Team) Save(dir string) error {
 // an engineer on Codex and a reviewer on OpenCode (the reviewer is always another client).
 func Starter(name string) *Team {
 	return &Team{Name: name, Agents: []Agent{
-		{ID: "orquestrador", Name: "Orquestrador", Role: "Diretor do projeto", Emblem: "gestao", Face: "av_p_robo", Client: "claude", Tier: "senior"},
-		{ID: "arquiteto", Name: "Arquiteto", Role: "Planejamento técnico", Emblem: "planejamento", Face: "av_h2", Client: "claude", Tier: "medium", Parent: "orquestrador"},
-		{ID: "engenheiro", Name: "Engenheiro", Role: "Implementação", Emblem: "codigo", Face: "av_h4", Client: "codex", Tier: "medium", Parent: "orquestrador"},
-		{ID: "revisor", Name: "Revisor QA", Role: "Testes e revisão", Emblem: "revisao", Face: "av_f2", Client: "opencode", Tier: "medium", Parent: "orquestrador"},
+		{ID: "orquestrador", Name: i18n.T("team.starter.director.name"), Role: i18n.T("team.starter.director.role"), Emblem: "gestao", Face: "av_p_robo", Client: "claude", Tier: "senior"},
+		{ID: "arquiteto", Name: i18n.T("team.starter.architect.name"), Role: i18n.T("team.starter.architect.role"), Emblem: "planejamento", Face: "av_h2", Client: "claude", Tier: "medium", Parent: "orquestrador"},
+		{ID: "engenheiro", Name: i18n.T("team.starter.engineer.name"), Role: i18n.T("team.starter.engineer.role"), Emblem: "codigo", Face: "av_h4", Client: "codex", Tier: "medium", Parent: "orquestrador"},
+		{ID: "revisor", Name: i18n.T("team.starter.reviewer.name"), Role: i18n.T("team.starter.reviewer.role"), Emblem: "revisao", Face: "av_f2", Client: "opencode", Tier: "medium", Parent: "orquestrador"},
 	}}
 }
 
@@ -123,7 +124,7 @@ func (t *Team) Add(a Agent) (Agent, error) {
 	if a.ID == "" {
 		a.ID = t.uniqueID(Slug(a.Name))
 	} else if t.index(a.ID) >= 0 {
-		return a, fmt.Errorf("já existe um agente com id %q", a.ID)
+		return a, i18n.Err("team.duplicate_agent", a.ID)
 	}
 	next := &Team{Name: t.Name, Agents: append(append([]Agent{}, t.Agents...), a)}
 	if err := next.Validate(); err != nil {
@@ -138,7 +139,7 @@ func (t *Team) Update(a Agent) error {
 	a = clean(a)
 	i := t.index(a.ID)
 	if i < 0 {
-		return fmt.Errorf("agente %q não existe", a.ID)
+		return i18n.Err("team.not_found", a.ID)
 	}
 	next := &Team{Name: t.Name, Agents: append([]Agent{}, t.Agents...)}
 	next.Agents[i] = a
@@ -153,7 +154,7 @@ func (t *Team) Update(a Agent) error {
 func (t *Team) Remove(id string) error {
 	i := t.index(id)
 	if i < 0 {
-		return fmt.Errorf("agente %q não existe", id)
+		return i18n.Err("team.not_found", id)
 	}
 	parent := t.Agents[i].Parent
 	out := make([]Agent, 0, len(t.Agents)-1)
@@ -190,28 +191,28 @@ func (t *Team) Validate() error {
 	for _, a := range t.Agents {
 		switch {
 		case a.ID == "":
-			return errors.New("agente sem id")
+			return i18n.Err("team.id_required")
 		case seen[a.ID]:
-			return fmt.Errorf("id repetido: %q", a.ID)
+			return i18n.Err("team.duplicate_id", a.ID)
 		case strings.TrimSpace(a.Name) == "":
-			return fmt.Errorf("agente %q sem nome", a.ID)
+			return i18n.Err("team.name_required", a.ID)
 		case a.Client == "":
-			return fmt.Errorf("agente %q sem cliente", a.ID)
+			return i18n.Err("team.client_required", a.ID)
 		}
 		seen[a.ID] = true
 	}
 	for _, a := range t.Agents {
 		if a.Parent != "" && !seen[a.Parent] {
-			return fmt.Errorf("o superior %q de %q não existe", a.Parent, a.ID)
+			return i18n.Err("team.parent_not_found", a.Parent, a.ID)
 		}
 		if a.Fallback != "" && (a.Fallback == a.ID || !seen[a.Fallback]) {
-			return fmt.Errorf("a reserva %q de %q não existe", a.Fallback, a.ID)
+			return i18n.Err("team.fallback_not_found", a.Fallback, a.ID)
 		}
 		// walk up: more steps than agents means a cycle
 		cur, steps := a, 0
 		for cur.Parent != "" {
 			if steps++; steps > len(t.Agents) || cur.Parent == a.ID {
-				return fmt.Errorf("ciclo no organograma em %q", a.ID)
+				return i18n.Err("team.cycle", a.ID)
 			}
 			cur, _ = t.Get(cur.Parent)
 		}

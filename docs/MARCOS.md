@@ -1,6 +1,8 @@
 # Marcos
 
-Um marco por vez; cada um termina com o Diogo vendo o resultado.
+*[Read in English](MILESTONES.md)*
+
+Um marco por vez; cada um termina com o dono do projeto vendo o resultado.
 
 ## M1 — Núcleo em Go e janela Win95 (concluído)
 
@@ -44,7 +46,19 @@ e os cartões do JinChronicles; a interface roda no Wails v3.
 | `internal/importer`, campos git e merge em `internal/tasks` | Codex |
 | `app_git.go`, `app_models.go`, migração para o Wails v3, telas, `docs/index.html` | Claude Code |
 
-## M4 — Distribuição
+## M4 — Distribuição e internacionalização (em andamento)
 
-Instalar/atualizar clientes via npm pela aba Clientes, auto-reparo, instalador NSIS,
+**Internacionalização (feita):** o sistema inteiro em inglês por padrão e português do Brasil como opção
+(Ferramentas → Idioma): interface, mensagens e erros do backend, histórico das tarefas (gravado como chave +
+argumentos, então muda de idioma junto), prompts enviados aos agentes, parecer do revisor nos dois idiomas,
+README e documentos em inglês com versão em português, e a página do GitHub Pages bilíngue. Catálogos em
+`internal/i18n/locales/` e `frontend/src/i18n/`, com teste de paridade de chaves e marcadores.
+
+**A seguir:** instalar e atualizar clientes via npm pela aba Clientes, auto-reparo, instalador NSIS,
 builds Linux e macOS.
+
+| Pacote | Dono no M4 (i18n) |
+|---|---|
+| `internal/*` traduzidos, histórico com chave | Codex |
+| `frontend/` traduzido, troca de idioma na interface | Codex |
+| `internal/i18n`, camada do app, prompts, documentos, Pages | Claude Code |

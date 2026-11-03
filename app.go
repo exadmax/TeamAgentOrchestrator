@@ -4,8 +4,8 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"log"
 	"os"
 	"path/filepath"
@@ -92,7 +92,8 @@ type TokenRow struct {
 
 // App is the facade the Wails frontend calls.
 type App struct {
-	wapp *application.App // nil in tests
+	wapp *application.App           // nil in tests
+	win  *application.WebviewWindow // the main window (title follows the language)
 
 	mu       sync.Mutex
 	dir      string
@@ -169,10 +170,10 @@ func (a *App) open(dir string) error {
 // ChooseProject asks for a folder and opens it.
 func (a *App) ChooseProject() (Snapshot, error) {
 	if a.wapp == nil {
-		return a.Snapshot(), errors.New("sem janela")
+		return a.Snapshot(), i18n.Err("app.no_window")
 	}
 	dir, err := a.wapp.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
-		Title: "Abrir projeto", CanChooseDirectories: true, CanChooseFiles: false,
+		Title: i18n.T("app.open_project"), CanChooseDirectories: true, CanChooseFiles: false,
 	}).PromptForSingleSelection()
 	if err != nil || dir == "" {
 		return a.Snapshot(), err
@@ -285,7 +286,7 @@ func (a *App) mutate(f func(t *team.Team) error) (Snapshot, error) {
 	a.mu.Lock()
 	if a.team == nil {
 		a.mu.Unlock()
-		return Snapshot{}, errors.New("nenhum projeto aberto")
+		return Snapshot{}, i18n.Err("app.no_project")
 	}
 	next := *a.team
 	next.Agents = append([]team.Agent{}, a.team.Agents...)
@@ -328,7 +329,7 @@ func (a *App) TogglePause(id string) (Snapshot, error) {
 	return a.mutate(func(t *team.Team) error {
 		ag, ok := t.Get(id)
 		if !ok {
-			return fmt.Errorf("agente %q não existe", id)
+			return i18n.Err("app.agent_not_found", id)
 		}
 		ag.Paused = !ag.Paused
 		return t.Update(ag)
@@ -348,21 +349,21 @@ func (a *App) Console(id string) []Line {
 func (a *App) RunAgent(id, prompt string) error {
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
-		return errors.New("escreva uma instrução")
+		return i18n.Err("app.write_instruction")
 	}
 	a.mu.Lock()
 	if a.team == nil {
 		a.mu.Unlock()
-		return errors.New("nenhum projeto aberto")
+		return i18n.Err("app.no_project")
 	}
 	ag, ok := a.team.Get(id)
 	if !ok {
 		a.mu.Unlock()
-		return fmt.Errorf("agente %q não existe", id)
+		return i18n.Err("app.agent_not_found", id)
 	}
 	if ag.Paused {
 		a.mu.Unlock()
-		return fmt.Errorf("%s está pausado", ag.Name)
+		return i18n.Err("app.agent_paused", ag.Name)
 	}
 	r, err := a.routeLocked(ag, "")
 	if err != nil {
@@ -378,7 +379,7 @@ func (a *App) RunAgent(id, prompt string) error {
 // TestClient runs a quick prompt on a client (the "Testar" button of the Clientes tab).
 func (a *App) TestClient(clientID, model, prompt string) error {
 	if strings.TrimSpace(prompt) == "" {
-		prompt = "Olá, você está pronto? Responda em uma linha."
+		prompt = i18n.T("app.test_prompt")
 	}
 	return a.launch(testAgent, clientID, model, prompt, prompt, "", "", nil)
 }
@@ -386,21 +387,21 @@ func (a *App) TestClient(clientID, model, prompt string) error {
 // promptLocked wraps the instruction with who the agent is in the org chart.
 func (a *App) promptLocked(ag team.Agent, instruction string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Você é %s (%s) no time do projeto %s.", ag.Name, ag.Role, a.team.Name)
+	b.WriteString(i18n.T("prompt.identity", ag.Name, ag.Role, a.team.Name))
 	if boss, ok := a.team.Get(ag.Parent); ok {
-		fmt.Fprintf(&b, " Você responde a %s (%s).", boss.Name, boss.Role)
+		b.WriteString(i18n.T("prompt.boss", boss.Name, boss.Role))
 	}
 	if subs := a.team.Children(ag.ID); len(subs) > 0 {
 		names := make([]string, len(subs))
 		for i, s := range subs {
 			names[i] = s.Name + " (" + s.Role + ")"
 		}
-		fmt.Fprintf(&b, " Seus subordinados: %s.", strings.Join(names, ", "))
+		b.WriteString(i18n.T("prompt.subordinates", strings.Join(names, ", ")))
 	}
 	if ag.Instructions != "" {
 		b.WriteString("\n\n" + ag.Instructions)
 	}
-	b.WriteString("\n\nInstrução: " + instruction)
+	b.WriteString(i18n.T("prompt.instruction", instruction))
 	return b.String()
 }
 
@@ -418,11 +419,11 @@ type Outcome struct {
 func (a *App) launch(agentID, clientID, model, fullPrompt, shown, task, workDir string, done func(Outcome)) error {
 	c, ok := clients.Find(a.catalog, clientID)
 	if !ok {
-		return fmt.Errorf("cliente %q desconhecido", clientID)
+		return i18n.Err("app.client_unknown", clientID)
 	}
 	exe, ok := clients.ResolveExe(c.Exe)
 	if !ok {
-		return fmt.Errorf("%s não está instalado (ou não está no PATH)", c.Name)
+		return i18n.Err("app.client_not_installed", c.Name)
 	}
 	argv := clients.BuildArgv(c, "headless", fullPrompt, model)
 	argv[0] = exe
@@ -430,7 +431,7 @@ func (a *App) launch(agentID, clientID, model, fullPrompt, shown, task, workDir 
 	a.mu.Lock()
 	if a.runs[agentID] != nil {
 		a.mu.Unlock()
-		return errors.New("este agente já está trabalhando; aguarde ou pare a sessão")
+		return i18n.Err("app.agent_busy")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	a.runs[agentID] = cancel
@@ -505,11 +506,11 @@ func (a *App) finish(agentID, clientID, model, run, logPath, task string, res ru
 		_ = st.RecordSession(sess)
 	}
 
-	end := Line{Agent: agentID, Kind: "end", Text: fmt.Sprintf("sessão terminou (código %d) · %s · %d tokens",
+	end := Line{Agent: agentID, Kind: "end", Text: i18n.T("app.session_ended",
 		res.Exit, failure.FormatDuration(res.End.Sub(res.Start)), res.Usage.Input+res.Usage.Output)}
 	if kind != "" {
 		end.Error = true
-		end.Text = fmt.Sprintf("falha (%s): %s", kind, failure.Help(kind))
+		end.Text = i18n.T("app.session_failed", kind, failure.Help(kind))
 		if act := failure.Action(kind); act != "" {
 			end.Text += " " + act
 		}
@@ -541,14 +542,14 @@ func eventLine(agent string, ev stream.Event) Line {
 	l := Line{Agent: agent, Kind: string(ev.Kind), Text: ev.Text, Tool: ev.Tool, Error: ev.IsError}
 	switch ev.Kind {
 	case stream.Init:
-		l.Text = "sessão iniciada"
+		l.Text = i18n.T("app.session_started")
 		if ev.Model != "" {
 			l.Text += " · " + ev.Model
 		}
 	case stream.Usage, stream.Result:
 		if ev.Usage != nil {
 			l.Kind = "usage"
-			l.Text = fmt.Sprintf("tokens: %d entrada · %d saída", ev.Usage.Input, ev.Usage.Output)
+			l.Text = i18n.T("app.tokens_line", ev.Usage.Input, ev.Usage.Output)
 		}
 	}
 	return l
@@ -624,6 +625,7 @@ func (a *App) emit(name string, data any) {
 
 type settings struct {
 	LastProject string `json:"last_project"`
+	Lang        string `json:"lang,omitempty"` // "" = English
 }
 
 func settingsPath() string {
@@ -634,23 +636,74 @@ func settingsPath() string {
 	return filepath.Join(dir, "TeamAgentOrchestrator", "settings.json")
 }
 
-func lastProject() string {
+func loadSettings() settings {
 	var s settings
 	if data, err := os.ReadFile(settingsPath()); err == nil {
 		_ = json.Unmarshal(data, &s)
 	}
+	return s
+}
+
+// saveSettings changes the settings file with f (read-modify-write, other fields kept).
+func saveSettings(f func(s *settings)) {
+	path := settingsPath()
+	if path == "" {
+		return
+	}
+	s := loadSettings()
+	f(&s)
+	_ = os.MkdirAll(filepath.Dir(path), 0o755)
+	data, _ := json.MarshalIndent(s, "", "  ")
+	_ = os.WriteFile(path, data, 0o644)
+}
+
+func lastProject() string {
+	s := loadSettings()
 	if fi, err := os.Stat(s.LastProject); err == nil && fi.IsDir() {
 		return s.LastProject
 	}
 	return ""
 }
 
-func saveLastProject(dir string) {
-	path := settingsPath()
-	if path == "" {
-		return
+func saveLastProject(dir string) { saveSettings(func(s *settings) { s.LastProject = dir }) }
+
+// LanguageView is the language menu: the current language and the ones available.
+type LanguageView struct {
+	Current   string   `json:"current"`
+	Available []string `json:"available"`
+}
+
+// Language returns the language of the interface, the messages and the agent prompts.
+func (a *App) Language() LanguageView {
+	return LanguageView{Current: i18n.Lang(), Available: i18n.Languages}
+}
+
+// SetLanguage switches the language of everything from now on and remembers it.
+// Records written before (session logs, phase details) keep the language they were written in.
+func (a *App) SetLanguage(lang string) (LanguageView, error) {
+	if err := i18n.Set(lang); err != nil {
+		return a.Language(), i18n.Err("app.language_unknown", lang)
 	}
-	_ = os.MkdirAll(filepath.Dir(path), 0o755)
-	data, _ := json.MarshalIndent(settings{LastProject: dir}, "", "  ")
-	_ = os.WriteFile(path, data, 0o644)
+	saveSettings(func(s *settings) { s.Lang = lang })
+	if a.win != nil {
+		a.win.SetTitle(i18n.T("app.window_title"))
+	}
+	a.mu.Lock()
+	dir := a.dir
+	var cfg team.Git
+	if a.team != nil {
+		cfg = a.team.Git
+	}
+	a.mu.Unlock()
+	if dir != "" {
+		_, view := gitRepoFor(dir, cfg) // its reason text is translated
+		a.mu.Lock()
+		a.gitView = view
+		a.mu.Unlock()
+	}
+	v := a.Language()
+	a.emit("language", v)
+	a.emit("snapshot", a.Snapshot())
+	go func() { a.emit("board", a.Board()) }()
+	return v, nil
 }

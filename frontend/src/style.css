@@ -151,7 +151,13 @@ label.radio { display: inline-flex; gap: 4px; align-items: center; margin-right:
 .activity .ev.err .txt { color: var(--err); }
 
 /* ------------------------------------------------ Mesa */
-.scene { position: relative; aspect-ratio: 924 / 433; max-height: 100%; width: 100%; background-repeat: no-repeat; }
+.scene { position: relative; aspect-ratio: 924 / 433; max-height: 100%; width: 100%; background-repeat: no-repeat; container-type: inline-size; }
+.scene-sign { position: absolute; left: 4.1%; top: 22.9%; width: 18.5%; height: 25.9%; background: #dacfe1; color: #03033e;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .8cqw; text-align: center; font-family: Arial, Verdana, sans-serif; }
+.scene-sign b { font-size: 3.7cqw; line-height: 1; }
+.scene-sign span { font-size: 2.3cqw; line-height: 1.15; color: #1d1f5e; }
+.scene-badge { position: absolute; left: 42.6%; top: 87.8%; width: 5.1%; height: 5.4%; background: #f1efef; color: #000;
+  display: grid; place-items: center; font: bold 2.1cqw Arial, Verdana, sans-serif; }
 .bubble { position: absolute; left: 52.6%; top: 7%; width: 42.6%; height: 42%; background: #fff; border-radius: 18px; padding: 3% 4%;
   font: 600 clamp(12px, 2.1vw, 22px)/1.25 var(--pixel); display: flex; align-items: center; overflow: hidden; }
 .suggest { background: var(--paper); padding: 10px 12px; display: flex; gap: 10px; align-items: center; font-size: 13px; }

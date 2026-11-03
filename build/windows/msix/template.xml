@@ -18,7 +18,7 @@
         PublisherName="CN=My Company"
         PublisherDisplayName="My Company"
         Version="0.1.0.0"
-        PackageDescription="Orquestrador de times de agentes de IA">
+        PackageDescription="Orchestrator for teams of AI coding agents">
         <Capabilities>
             <Capability Name="runFullTrust" />
             
@@ -26,7 +26,7 @@
         <Applications>
             <Application
                 Id="com.exadmax.teamagent"
-                Description="Orquestrador de times de agentes de IA"
+                Description="Orchestrator for teams of AI coding agents"
                 DisplayName="My Product"
                 ExecutableName="TeamAgent.exe"
                 EntryPoint="Windows.FullTrustApplication">
@@ -43,7 +43,7 @@
             <Framework>false</Framework>
             <DisplayName>My Product</DisplayName>
             <PublisherDisplayName>My Company</PublisherDisplayName>
-            <Description>Orquestrador de times de agentes de IA</Description>
+            <Description>Orchestrator for teams of AI coding agents</Description>
             <Logo>Assets\AppIcon.png</Logo>
         </Properties>
     </PackageInformation>

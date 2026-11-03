@@ -2,6 +2,7 @@ package failure
 
 import (
 	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"regexp"
 	"strconv"
 	"strings"
@@ -48,24 +49,24 @@ var patterns = []struct {
 	{"transient", regexp.MustCompile(`(?i)\b50[234]\b|\b529\b|UNAVAILABLE|overloaded|at capacity|high demand|bad gateway|service unavailable|server error|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|getaddrinfo|socket hang up|fetch failed|connection (error|reset|refused|closed)|network (error|is unreachable)|timed? ?out|temporarily|try again later|internal (server )?error`)},
 }
 var help = map[Kind]string{
-	"transient":   "O serviço do modelo está instável ou sobrecarregado (erro temporário).",
-	"timeout":     "A ferramenta ficou muda por tempo demais (timeout) e foi encerrada.",
-	"quota":       "Cota, limite de uso ou créditos do modelo esgotados.",
-	"auth":        "A ferramenta não está autenticada ou a chave foi recusada.",
-	"model":       "O modelo pedido não existe ou não está liberado para a sua conta.",
-	"context":     "O pedido ficou grande demais para a janela de contexto do modelo.",
-	"refused":     "O modelo recusou o pedido (filtro de conteúdo ou política).",
-	"interrupted": "A sessão foi interrompida por você (Ctrl+C).",
-	"launch":      "A ferramenta não iniciou (não está instalada ou não está no PATH).",
-	"unknown":     "A ferramenta terminou com erro sem um motivo reconhecido. Veja o log.",
+	"transient":   "failure.help.transient",
+	"timeout":     "failure.help.timeout",
+	"quota":       "failure.help.quota",
+	"auth":        "failure.help.auth",
+	"model":       "failure.help.model",
+	"context":     "failure.help.context",
+	"refused":     "failure.help.refused",
+	"interrupted": "failure.help.interrupted",
+	"launch":      "failure.help.launch",
+	"unknown":     "failure.help.unknown",
 }
 var actions = map[Kind]string{
-	"quota":   "Espere a cota voltar, troque de modelo ou de ferramenta, ou adicione créditos.",
-	"auth":    "Entre de novo no cliente (login ou chave) ou marque a pasta como confiável, e mande a instrução de novo.",
-	"model":   "Escolha outro modelo nas propriedades do agente (Organograma) ou corrija o catálogo do cliente.",
-	"context": "Mande uma instrução menor ou divida a tarefa em partes.",
-	"refused": "Reescreva a instrução com mais contexto, ou troque de modelo.",
-	"launch":  "Instale o cliente ou confira o PATH (aba Clientes).",
+	"quota":   "failure.action.quota",
+	"auth":    "failure.action.auth",
+	"model":   "failure.action.model",
+	"context": "failure.action.context",
+	"refused": "failure.action.refused",
+	"launch":  "failure.action.launch",
 }
 
 func Classify(exitCode int, text string) Kind {
@@ -84,8 +85,18 @@ func Classify(exitCode int, text string) Kind {
 	}
 	return Unknown
 }
-func Help(k Kind) string    { return help[k] }
-func Action(k Kind) string  { return actions[k] }
+func Help(k Kind) string {
+	if key := help[k]; key != "" {
+		return i18n.T(key)
+	}
+	return ""
+}
+func Action(k Kind) string {
+	if key := actions[k]; key != "" {
+		return i18n.T(key)
+	}
+	return ""
+}
 func AutoRetry(k Kind) bool { return k == Transient || k == Timeout }
 func Switchable(k Kind) bool {
 	return k == Quota || k == Transient || k == Timeout || k == Model || k == Refused || k == Launch

@@ -11,7 +11,7 @@
     !define INFO_COMPANYNAME "Diogo Góes Zanetti"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "TeamAgent Orquestrador"
+    !define INFO_PRODUCTNAME "TeamAgent Orchestrator"
 !endif
 !ifndef INFO_PRODUCTVERSION
     !define INFO_PRODUCTVERSION "0.3.0"

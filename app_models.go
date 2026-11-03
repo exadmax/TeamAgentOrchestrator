@@ -1,8 +1,7 @@
 package main
 
 import (
-	"errors"
-	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"sort"
 	"strings"
 	"time"
@@ -66,10 +65,10 @@ func (a *App) Models() ModelsView {
 // SetModelOverride swaps the model of a client (task "" = every task) for minutes (0 = until removed).
 func (a *App) SetModelOverride(client, model string, minutes int, task string) error {
 	if strings.TrimSpace(model) == "" {
-		return errors.New("escolha o modelo")
+		return i18n.Err("models.choose")
 	}
 	if _, ok := clients.Find(a.catalog, client); !ok {
-		return fmt.Errorf("cliente %q desconhecido", client)
+		return i18n.Err("app.client_unknown", client)
 	}
 	return a.models(func(st *store.Store) error {
 		return st.SetOverride(client, model, time.Duration(minutes)*time.Minute, task)
@@ -96,7 +95,7 @@ func (a *App) models(f func(st *store.Store) error) error {
 	st := a.store
 	a.mu.Unlock()
 	if st == nil {
-		return errors.New("nenhum projeto aberto")
+		return i18n.Err("app.no_project")
 	}
 	if err := f(st); err != nil {
 		return err
@@ -124,7 +123,7 @@ func (a *App) watchClocks(stop <-chan struct{}) {
 		}
 		back := st.PopExpired()
 		for _, c := range back {
-			a.push(Line{Agent: c.Client, Kind: "info", Text: fmt.Sprintf("a cota de %s/%s voltou", c.Client, c.Model)})
+			a.push(Line{Agent: c.Client, Kind: "info", Text: i18n.T("models.quota_back", c.Client, c.Model)})
 		}
 		if len(back) > 0 {
 			a.emit("models", a.Models())
@@ -148,22 +147,22 @@ func (a *App) routeLocked(ag team.Agent, task string) (route, error) {
 	if !clocked {
 		return route{agent: ag, model: model}, nil
 	}
-	why := fmt.Sprintf("%s/%s sem cota até %s", ag.Client, orDefault(model), until.Format("15:04"))
+	why := i18n.T("models.no_quota_until", ag.Client, orDefault(model), until.Format("15:04"))
 	if !a.store.AutoSwitch() {
-		return route{}, fmt.Errorf("%s: troque o modelo ou ligue a troca automática (Ferramentas → Modelos e cotas)", why)
+		return route{}, i18n.Err("models.switch_hint", why)
 	}
 	if c, ok := clients.Find(a.catalog, ag.Client); ok {
 		if m := a.freeModelLocked(c, model); m != "" {
-			return route{agent: ag, model: m, note: why + "; usando " + m}, nil
+			return route{agent: ag, model: m, note: i18n.T("models.using_model", why, m)}, nil
 		}
 	}
 	if fb, ok := a.team.Get(ag.Fallback); ok && !fb.Paused && a.runs[fb.ID] == nil {
 		fm := a.modelLocked(fb, task)
 		if _, busy := a.store.ClockUntil(fb.Client, fm); !busy {
-			return route{agent: fb, model: fm, note: why + "; usando a reserva " + fb.Name}, nil
+			return route{agent: fb, model: fm, note: i18n.T("models.using_reserve", why, fb.Name)}, nil
 		}
 	}
-	return route{}, fmt.Errorf("%s e não há outro modelo nem reserva livre", why)
+	return route{}, i18n.Err("models.no_way_out", why)
 }
 
 // freeModelLocked returns the first model of c after current (wrapping around) without a quota clock.

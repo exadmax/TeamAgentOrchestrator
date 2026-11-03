@@ -2,7 +2,7 @@ package tasks
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"strings"
 )
 
@@ -41,5 +41,5 @@ func ParseGenerated(text string, validAgents []string) ([]NewTask, error) {
 		}
 		return out, nil
 	}
-	return nil, fmt.Errorf("nenhum array JSON válido de tarefas encontrado")
+	return nil, i18n.Err("tasks.no_task_array")
 }
