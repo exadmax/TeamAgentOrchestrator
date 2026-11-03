@@ -1,10 +1,12 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,10 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/exadmax/TeamAgentOrchestrator/internal/clients"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/failure"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/gitflow"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/runner"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/store"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/stream"
@@ -89,7 +92,7 @@ type TokenRow struct {
 
 // App is the facade the Wails frontend calls.
 type App struct {
-	ctx context.Context
+	wapp *application.App // nil in tests
 
 	mu       sync.Mutex
 	dir      string
@@ -102,6 +105,8 @@ type App struct {
 	console  map[string][]Line
 	activity []Line
 	taskRuns map[string]bool // tasks with a session running
+	repo     *gitflow.Repo   // nil = no git flow (not a repo, or turned off)
+	gitView  GitView
 
 	bmu sync.Mutex // serializes read-modify-write of tao.tasks.json
 }
@@ -111,24 +116,28 @@ func NewApp() *App {
 		console: map[string][]Line{}, taskRuns: map[string]bool{}}
 }
 
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
+// ServiceStartup is called by Wails before the window opens.
+func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	dir := lastProject()
 	if dir == "" {
 		dir, _ = os.Getwd()
 	}
 	if err := a.open(dir); err != nil {
-		runtime.LogErrorf(ctx, "open %s: %v", dir, err)
+		log.Printf("open %s: %v", dir, err)
 	}
 	go a.DetectClients()
+	go a.watchClocks(ctx.Done())
+	return nil
 }
 
-func (a *App) shutdown(context.Context) {
+// ServiceShutdown stops every running session when the app closes.
+func (a *App) ServiceShutdown() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for _, cancel := range a.runs {
 		cancel()
 	}
+	return nil
 }
 
 // ---------------------------------------------------------------- project
@@ -149,8 +158,9 @@ func (a *App) open(dir string) error {
 			return err
 		}
 	}
+	repo, view := gitRepoFor(dir, t.Git)
 	a.mu.Lock()
-	a.dir, a.team, a.store = dir, t, store.Open(filepath.Join(dir, stateDir))
+	a.dir, a.team, a.store, a.repo, a.gitView = dir, t, store.Open(filepath.Join(dir, stateDir)), repo, view
 	a.console, a.activity, a.failed = map[string][]Line{}, nil, map[string]bool{}
 	a.mu.Unlock()
 	return nil
@@ -158,7 +168,12 @@ func (a *App) open(dir string) error {
 
 // ChooseProject asks for a folder and opens it.
 func (a *App) ChooseProject() (Snapshot, error) {
-	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{Title: "Abrir projeto"})
+	if a.wapp == nil {
+		return a.Snapshot(), errors.New("sem janela")
+	}
+	dir, err := a.wapp.Dialog.OpenFileWithOptions(&application.OpenFileDialogOptions{
+		Title: "Abrir projeto", CanChooseDirectories: true, CanChooseFiles: false,
+	}).PromptForSingleSelection()
 	if err != nil || dir == "" {
 		return a.Snapshot(), err
 	}
@@ -190,7 +205,7 @@ func (a *App) Snapshot() Snapshot {
 }
 
 func (a *App) viewLocked(ag team.Agent) AgentView {
-	v := AgentView{Agent: ag, Status: StatusIdle, ModelInUse: a.modelLocked(ag)}
+	v := AgentView{Agent: ag, Status: StatusIdle, ModelInUse: a.modelLocked(ag, "")}
 	if c, ok := clients.Find(a.catalog, ag.Client); ok {
 		v.ClientName, v.ClientColor = c.Name, c.Color
 		v.Command = clients.ShowArgv(clients.BuildArgv(c, "headless", "<prompt>", v.ModelInUse))
@@ -209,10 +224,11 @@ func (a *App) viewLocked(ag team.Agent) AgentView {
 	return v
 }
 
-// modelLocked: a model override wins, then the agent's own model, then the client's model for its tier.
-func (a *App) modelLocked(ag team.Agent) string {
+// modelLocked: a model swap wins (the task's, then the client's), then the agent's own model, then the
+// client's model for its tier.
+func (a *App) modelLocked(ag team.Agent, task string) string {
 	if a.store != nil {
-		if ov, ok := a.store.OverrideFor(ag.Client, ""); ok {
+		if ov, ok := a.store.OverrideFor(ag.Client, task); ok {
 			return ov.Model
 		}
 	}
@@ -229,11 +245,7 @@ func (a *App) modelLocked(ag team.Agent) string {
 
 // DetectClients looks for the CLIs on this machine and pushes the result to the UI.
 func (a *App) DetectClients() []clients.Detected {
-	ctx := a.ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	found := clients.DetectAll(ctx, a.catalog)
+	found := clients.DetectAll(context.Background(), a.catalog)
 	a.mu.Lock()
 	a.detected = found
 	a.mu.Unlock()
@@ -254,7 +266,7 @@ func (a *App) CheckUpdates() []clients.Detected {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			if v, err := clients.LatestNpm(a.ctx, found[i].NpmPackage); err == nil {
+			if v, err := clients.LatestNpm(context.Background(), found[i].NpmPackage); err == nil {
 				found[i].Latest = v
 			}
 		}(i)
@@ -352,10 +364,15 @@ func (a *App) RunAgent(id, prompt string) error {
 		a.mu.Unlock()
 		return fmt.Errorf("%s está pausado", ag.Name)
 	}
-	model := a.modelLocked(ag)
-	full := a.promptLocked(ag, prompt)
+	r, err := a.routeLocked(ag, "")
+	if err != nil {
+		a.mu.Unlock()
+		return err
+	}
+	full := a.promptLocked(r.agent, prompt)
 	a.mu.Unlock()
-	return a.launch(ag.ID, ag.Client, model, full, prompt, "", nil)
+	a.noteRoute(ag.ID, r)
+	return a.launch(r.agent.ID, r.agent.Client, r.model, full, prompt, "", "", nil)
 }
 
 // TestClient runs a quick prompt on a client (the "Testar" button of the Clientes tab).
@@ -363,7 +380,7 @@ func (a *App) TestClient(clientID, model, prompt string) error {
 	if strings.TrimSpace(prompt) == "" {
 		prompt = "Olá, você está pronto? Responda em uma linha."
 	}
-	return a.launch(testAgent, clientID, model, prompt, prompt, "", nil)
+	return a.launch(testAgent, clientID, model, prompt, prompt, "", "", nil)
 }
 
 // promptLocked wraps the instruction with who the agent is in the org chart.
@@ -395,9 +412,10 @@ type Outcome struct {
 	Exit     int
 }
 
-// launch starts a session. task tags the session with a task id (""= free instruction);
+// launch starts a session. task tags the session with a task id (""= free instruction); workDir is
+// where the agent works ("" = the project folder; a task with git gets its worktree);
 // done, if not nil, runs after the session is recorded.
-func (a *App) launch(agentID, clientID, model, fullPrompt, shown, task string, done func(Outcome)) error {
+func (a *App) launch(agentID, clientID, model, fullPrompt, shown, task, workDir string, done func(Outcome)) error {
 	c, ok := clients.Find(a.catalog, clientID)
 	if !ok {
 		return fmt.Errorf("cliente %q desconhecido", clientID)
@@ -428,7 +446,7 @@ func (a *App) launch(agentID, clientID, model, fullPrompt, shown, task string, d
 	go func() {
 		defer cancel()
 		res := runner.Run(ctx, runner.Spec{
-			Client: clientID, Argv: argv, Dir: dir, Env: c.Env, LogPath: logPath,
+			Client: clientID, Argv: argv, Dir: cmp.Or(workDir, dir), Env: c.Env, LogPath: logPath,
 			IdleKill: failure.IdleKill, Heartbeat: failure.Heartbeat, MaxRun: maxRun,
 		}, runner.Hooks{
 			OnEvent: func(ev stream.Event) { a.push(eventLine(agentID, ev)) },
@@ -475,6 +493,10 @@ func (a *App) finish(agentID, clientID, model, run, logPath, task string, res ru
 				}
 				_ = st.RecordClock(clientID, model, failure.ErrorModel(res.Tail), wait, string(kind), !told)
 			}
+		}
+		if kind == failure.Model && model != "" {
+			// the model is gone or not allowed: keep it off for a day so the switch can pick another one
+			_ = st.SetClock(clientID, model, 24*time.Hour, string(kind), "estimado")
 		}
 	} else if q := failure.LastQuestion(res.Final); q != "" {
 		sess.Status, sess.Question = "blocked", q
@@ -595,8 +617,8 @@ func (a *App) Tokens(day string) []TokenRow {
 // ---------------------------------------------------------------- helpers
 
 func (a *App) emit(name string, data any) {
-	if a.ctx != nil {
-		runtime.EventsEmit(a.ctx, name, data)
+	if a.wapp != nil {
+		a.wapp.Event.Emit(name, data)
 	}
 }
 

@@ -10,7 +10,7 @@ qualquer time. Os agentes rodam pelos próprios clientes de linha de comando (Cl
 Codex CLI, OpenCode, Gemini CLI) e o orquestrador lê a saída JSON deles para a interface.
 
 - Backend: Go 1.26+, sem dependências além do Wails e da biblioteca padrão.
-- Interface: Wails v2 (janela nativa, WebView2) com HTML/CSS/JS puro em `frontend/`.
+- Interface: Wails v3 (janela nativa, WebView2) com HTML/CSS/JS puro em `frontend/`; o JS chama o Go por `Call.ByName("main.App.<Método>")` (`frontend/src/api.js`).
 - Arquitetura e marcos: `docs/ARQUITETURA.md` e `docs/MARCOS.md`.
 
 ## Regras
@@ -35,6 +35,6 @@ Codex CLI, OpenCode, Gemini CLI) e o orquestrador lê a saída JSON deles para a
 
 ```bash
 go test ./...                 # testes do backend
-wails dev                     # app com recarga
-wails build                   # binário em build/bin/
+wails3 dev                    # app com recarga
+wails3 build                  # binário em bin/
 ```

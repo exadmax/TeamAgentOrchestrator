@@ -10,7 +10,6 @@ import (
 	"github.com/exadmax/TeamAgentOrchestrator/internal/failure"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/store"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/tasks"
-	"github.com/exadmax/TeamAgentOrchestrator/internal/team"
 )
 
 // Who does things by hand in the task history.
@@ -27,7 +26,9 @@ type PhaseView struct {
 	Phase    string `json:"phase"`
 	Status   string `json:"status"`
 	Agent    string `json:"agent,omitempty"`
+	Model    string `json:"model,omitempty"`
 	Attempts int    `json:"attempts,omitempty"`
+	Detail   string `json:"detail,omitempty"`
 }
 
 // TaskView is a task plus names and its pipeline.
@@ -45,10 +46,11 @@ type BoardView struct {
 	Tasks   []TaskView     `json:"tasks"`
 	Active  string         `json:"active"`
 	Backlog tasks.Progress `json:"backlog"`
+	Git     GitView        `json:"git"`
 }
 
-// pipelinePhases are the store phases used before the git flow of M3 (no submit/pr/merge yet).
-var pipelinePhases = []string{"start", "work", "review", "verdict"}
+// noGitPhases is the pipeline of a project without the git flow: no submit, PR or merge.
+var noGitPhases = []string{"start", "work", "review", "verdict"}
 
 // board loads the task board, applies f and saves it, all under the board lock.
 func (a *App) board(f func(b *tasks.Board) error) error {
@@ -81,7 +83,7 @@ func (a *App) board(f func(b *tasks.Board) error) error {
 func (a *App) Board() BoardView {
 	a.bmu.Lock()
 	a.mu.Lock()
-	dir, st, t := a.dir, a.store, a.team
+	dir, st, t, gv := a.dir, a.store, a.team, a.gitView
 	running := map[string]bool{}
 	for id := range a.taskRuns {
 		running[id] = true
@@ -92,7 +94,11 @@ func (a *App) Board() BoardView {
 	if err != nil || t == nil {
 		return BoardView{Sprints: []SprintView{}, Tasks: []TaskView{}}
 	}
-	v := BoardView{Backlog: b.Progress(""), Sprints: []SprintView{}, Tasks: []TaskView{}} // [] not null for the UI
+	v := BoardView{Backlog: b.Progress(""), Sprints: []SprintView{}, Tasks: []TaskView{}, Git: gv} // [] not null for the UI
+	phases := noGitPhases
+	if gv.On {
+		phases = store.Phases
+	}
 	for _, sp := range b.Sprints {
 		v.Sprints = append(v.Sprints, SprintView{Sprint: sp, Progress: b.Progress(sp.ID)})
 		if sp.Status == tasks.Active {
@@ -105,10 +111,10 @@ func (a *App) Board() BoardView {
 			tv.AssigneeName = ag.Name
 		}
 		state := st.State(tk.ID)
-		for _, p := range pipelinePhases {
+		for _, p := range phases {
 			pv := PhaseView{Phase: p}
 			if rec := state.Phases[p]; rec != nil {
-				pv.Status, pv.Agent, pv.Attempts = rec.Status, rec.Agent, rec.Attempts
+				pv.Status, pv.Agent, pv.Model, pv.Attempts, pv.Detail = rec.Status, rec.Agent, rec.Model, rec.Attempts, rec.Detail
 				if pv.Status == "running" && !tv.Running {
 					pv.Status = "failed" // the app closed mid-session: the run is gone, the task can be run again
 				}
@@ -172,27 +178,37 @@ func (a *App) SetTaskPriority(id string, high bool) error {
 
 // ---------------------------------------------------------------- agents working on tasks
 
-func (a *App) agentFor(id string) (team.Agent, string, error) {
+// agentFor checks the agent and routes it: the result may be another model or the agent's reserve
+// when the planned model is out of quota (see routeLocked).
+func (a *App) agentFor(id, task string) (route, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.team == nil {
-		return team.Agent{}, "", errors.New("nenhum projeto aberto")
+		return route{}, errors.New("nenhum projeto aberto")
 	}
 	ag, ok := a.team.Get(id)
 	if !ok {
-		return team.Agent{}, "", fmt.Errorf("agente %q não existe", id)
+		return route{}, fmt.Errorf("agente %q não existe", id)
 	}
 	if ag.Paused {
-		return team.Agent{}, "", fmt.Errorf("%s está pausado", ag.Name)
+		return route{}, fmt.Errorf("%s está pausado", ag.Name)
 	}
-	return ag, a.modelLocked(ag), nil
+	return a.routeLocked(ag, task)
+}
+
+// noteRoute tells the activity panel when a session does not run as planned.
+func (a *App) noteRoute(planned string, r route) {
+	if r.note != "" {
+		a.push(Line{Agent: planned, Kind: "info", Text: r.note})
+	}
 }
 
 // RunTask hands the task to its assignee. The result moves the task: done work goes to review,
 // a final question blocks it, a failure stays in progress with the reason in the history.
-func (a *App) RunTask(id string) error { return a.runTask(id, "") }
+func (a *App) RunTask(id string) error { return a.runTask(id, "", 0) }
 
-func (a *App) runTask(id, note string) error {
+// runTask runs the task once; switches counts the hops already made to another model or the reserve.
+func (a *App) runTask(id, note string, switches int) error {
 	var tk tasks.Task
 	if err := a.board(func(b *tasks.Board) error {
 		t, ok := b.Task(id)
@@ -210,25 +226,42 @@ func (a *App) runTask(id, note string) error {
 	}); err != nil {
 		return err
 	}
-	ag, model, err := a.agentFor(tk.Assignee)
+	r, err := a.agentFor(tk.Assignee, id)
 	if err != nil {
 		return err
 	}
+	ag, model := r.agent, r.model
+	a.noteRoute(tk.Assignee, r)
 	a.mu.Lock()
 	prompt := a.promptLocked(ag, taskPrompt(tk, note))
 	st := a.store
 	a.mu.Unlock()
 
+	repo, workDir := a.gitRepo(), ""
+	if repo != nil {
+		if workDir, err = a.gitStart(repo, tk); err != nil {
+			a.warn(id, st.Mark(id, "start", "failed", store.PhaseInfo{Agent: ag.ID, Detail: err.Error()}))
+			return err
+		}
+	}
 	if err := a.board(func(b *tasks.Board) error { return b.Start(id, ag.ID, time.Now()) }); err != nil {
 		return err
 	}
-	a.warn(id, st.Mark(id, "start", "ok", store.PhaseInfo{Agent: ag.ID, Client: ag.Client}))
+	a.warn(id, st.Mark(id, "start", "ok", store.PhaseInfo{Agent: ag.ID, Client: ag.Client, Detail: workDir}))
 	a.warn(id, st.Mark(id, "work", "running", store.PhaseInfo{Agent: ag.ID, Client: ag.Client, Model: model}))
 	a.setTaskRun(id, true)
-	err = a.launch(ag.ID, ag.Client, model, prompt, fmt.Sprintf("[%s] %s", id, tk.Title), id, func(o Outcome) {
+	err = a.launch(ag.ID, ag.Client, model, prompt, fmt.Sprintf("[%s] %s", id, tk.Title), id, workDir, func(o Outcome) {
 		a.setTaskRun(id, false)
 		now := time.Now()
 		switch {
+		case o.Kind != "" && switches < maxSwitches && a.switchable(o.Kind):
+			// the failure set a clock on this model: the next route picks another model or the reserve
+			a.warn(id, st.Mark(id, "work", "failed", store.PhaseInfo{Agent: ag.ID, Client: ag.Client, Model: model, Detail: string(o.Kind)}))
+			if err := a.runTask(id, note, switches+1); err != nil {
+				a.warn(id, a.board(func(b *tasks.Board) error {
+					return b.Ask(id, ag.ID, fmt.Sprintf("falhou (%s) e não deu para trocar: %v", o.Kind, err), now)
+				}))
+			}
 		case o.Kind != "":
 			a.warn(id, st.Mark(id, "work", "failed", store.PhaseInfo{Agent: ag.ID, Client: ag.Client, Model: model, Detail: string(o.Kind)}))
 			a.warn(id, a.board(func(b *tasks.Board) error {
@@ -239,6 +272,9 @@ func (a *App) runTask(id, note string) error {
 			a.warn(id, a.board(func(b *tasks.Board) error { return b.Ask(id, ag.ID, o.Question, now) }))
 		default:
 			a.warn(id, st.Mark(id, "work", "ok", store.PhaseInfo{Agent: ag.ID, Client: ag.Client, Model: model}))
+			if repo != nil {
+				a.gitSubmit(repo, st, id, ag.ID, o.Final)
+			}
 			a.warn(id, a.board(func(b *tasks.Board) error { return b.Submit(id, ag.ID, oneLine(o.Final), now) }))
 		}
 	})
@@ -267,12 +303,12 @@ func (a *App) AnswerTask(id, answer string) error {
 	if question != "" {
 		note = fmt.Sprintf("Você perguntou: %q. %s", question, note)
 	}
-	return a.runTask(id, note)
+	return a.runTask(id, note, 0)
 }
 
 // DelegateTask passes the task to another agent and starts it there.
 func (a *App) DelegateTask(id, to, note string) error {
-	if _, _, err := a.agentFor(to); err != nil {
+	if _, err := a.agentFor(to, id); err != nil {
 		return err
 	}
 	if err := a.board(func(b *tasks.Board) error { return b.Delegate(id, to, human, time.Now()) }); err != nil {
@@ -281,7 +317,7 @@ func (a *App) DelegateTask(id, to, note string) error {
 	if strings.TrimSpace(note) != "" {
 		note = "Observação de quem delegou: " + note
 	}
-	return a.runTask(id, note)
+	return a.runTask(id, note, 0)
 }
 
 // ReviewTask asks a reviewer (the task's, or one picked from another client) to approve or not.
@@ -300,24 +336,51 @@ func (a *App) ReviewTask(id string) error {
 	}); err != nil {
 		return err
 	}
+	// the reviewer must be on another client than whoever did the work (it may have been the reserve)
+	a.mu.Lock()
+	st0 := a.store
+	a.mu.Unlock()
+	worker := ""
+	if ph := st0.State(id).Phases["work"]; ph != nil {
+		worker = ph.Client
+	}
+	if worker == "" {
+		worker = a.clientOf(tk.Assignee)
+	}
 	revID := tk.Reviewer
+	if revID != "" && a.clientOf(revID) == worker {
+		a.push(Line{Agent: id, Kind: "info", Text: fmt.Sprintf("%s usa o mesmo cliente de quem fez a tarefa (%s): escolhendo outro revisor", revID, worker)})
+		revID = ""
+	}
 	if revID == "" {
-		revID = a.pickReviewer(tk.Assignee)
+		revID = a.pickReviewer(tk.Assignee, worker)
 	}
 	if revID == "" {
 		return errors.New("nenhum revisor disponível: precisa de um agente ativo em outro cliente")
 	}
-	rev, model, err := a.agentFor(revID)
+	r, err := a.agentFor(revID, id)
 	if err != nil {
 		return err
 	}
+	if r.agent.Client == worker {
+		return fmt.Errorf("o revisor %s caiu no mesmo cliente de quem fez a tarefa (%s)", r.agent.Name, worker)
+	}
+	rev, model := r.agent, r.model
+	a.noteRoute(revID, r)
 	a.mu.Lock()
 	prompt := a.promptLocked(rev, reviewPrompt(tk))
 	st := a.store
 	a.mu.Unlock()
+	repo, workDir := a.gitRepo(), ""
+	if repo != nil && tk.Branch != "" {
+		if workDir, err = a.gitStart(repo, tk); err != nil {
+			return err
+		}
+		prompt += a.reviewContext(repo, tk)
+	}
 	a.warn(id, st.Mark(id, "review", "running", store.PhaseInfo{Agent: rev.ID, Client: rev.Client, Model: model}))
 	a.setTaskRun(id, true)
-	err = a.launch(rev.ID, rev.Client, model, prompt, fmt.Sprintf("[%s] revisão", id), id, func(o Outcome) {
+	err = a.launch(rev.ID, rev.Client, model, prompt, fmt.Sprintf("[%s] revisão", id), id, workDir, func(o Outcome) {
 		a.setTaskRun(id, false)
 		now := time.Now()
 		if o.Kind != "" {
@@ -349,17 +412,27 @@ func (a *App) ReviewTask(id string) error {
 	return err
 }
 
-// pickReviewer prefers an active reviewer-emblem agent on another client, then anyone on another client.
-func (a *App) pickReviewer(author string) string {
+// clientOf returns the client of an agent ("" if unknown).
+func (a *App) clientOf(id string) string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.team == nil {
 		return ""
 	}
-	auth, _ := a.team.Get(author)
+	ag, _ := a.team.Get(id)
+	return ag.Client
+}
+
+// pickReviewer prefers an active reviewer-emblem agent on another client, then anyone on another client.
+func (a *App) pickReviewer(author, worker string) string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.team == nil {
+		return ""
+	}
 	best := ""
 	for _, ag := range a.team.Agents {
-		if ag.Paused || ag.ID == author || ag.Client == auth.Client {
+		if ag.Paused || ag.ID == author || ag.Client == worker {
 			continue
 		}
 		if ag.Emblem == "revisao" {
@@ -378,10 +451,12 @@ func (a *App) GenerateTasks(agentID, objective, sprint string) error {
 	if objective == "" {
 		return errors.New("escreva o objetivo")
 	}
-	ag, model, err := a.agentFor(agentID)
+	r, err := a.agentFor(agentID, "")
 	if err != nil {
 		return err
 	}
+	ag, model := r.agent, r.model
+	a.noteRoute(agentID, r)
 	a.mu.Lock()
 	var roster []string
 	var ids []string
@@ -399,7 +474,7 @@ Não execute nada e não altere arquivos: só planeje. Responda SOMENTE com um a
 [{"title": "atividade curta", "done": "como saber que terminou", "assignee": "<id do agente>", "priority": "normal"}]`,
 		objective, strings.Join(roster, "\n")))
 	a.mu.Unlock()
-	return a.launch(ag.ID, ag.Client, model, prompt, "planejar: "+objective, "", func(o Outcome) {
+	return a.launch(ag.ID, ag.Client, model, prompt, "planejar: "+objective, "", "", func(o Outcome) {
 		if o.Kind != "" {
 			return
 		}

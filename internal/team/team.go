@@ -37,12 +37,21 @@ type Agent struct {
 	Parent       string `json:"parent,omitempty"` // superior's ID; empty = top of the chart
 	Instructions string `json:"instructions,omitempty"`
 	Paused       bool   `json:"paused,omitempty"`
+	Fallback     string `json:"fallback,omitempty"` // reserve agent's ID, used when this agent's models are out of quota
 }
 
 // Team is the content of tao.json.
 type Team struct {
 	Name   string  `json:"name"`
 	Agents []Agent `json:"agents"`
+	Git    Git     `json:"git,omitzero"`
+}
+
+// Git is how the tasks of this project use git (each task gets a branch in its own worktree).
+type Git struct {
+	Off    bool   `json:"off,omitempty"`    // true = tasks run in the project folder, with no branch or PR
+	Base   string `json:"base,omitempty"`   // "" = origin's default branch, else the current one
+	Prefix string `json:"prefix,omitempty"` // branch prefix; "" = "tao/"
 }
 
 // Load reads tao.json from the project dir. A missing file is not an error: it returns ok=false.
@@ -155,6 +164,9 @@ func (t *Team) Remove(id string) error {
 		if a.Parent == id {
 			a.Parent = parent
 		}
+		if a.Fallback == id {
+			a.Fallback = ""
+		}
 		out = append(out, a)
 	}
 	t.Agents = out
@@ -191,6 +203,9 @@ func (t *Team) Validate() error {
 	for _, a := range t.Agents {
 		if a.Parent != "" && !seen[a.Parent] {
 			return fmt.Errorf("o superior %q de %q não existe", a.Parent, a.ID)
+		}
+		if a.Fallback != "" && (a.Fallback == a.ID || !seen[a.Fallback]) {
+			return fmt.Errorf("a reserva %q de %q não existe", a.Fallback, a.ID)
 		}
 		// walk up: more steps than agents means a cycle
 		cur, steps := a, 0

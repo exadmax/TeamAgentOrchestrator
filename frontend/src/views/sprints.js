@@ -47,7 +47,7 @@ export default function sprints(ctx) {
     rows.replaceChildren(...(tasks.length ? tasks.map((t) => h('tr', { ondblclick: () => openTask(ctx, t.id), title: 'Duplo clique para abrir', style: { cursor: 'default' } },
       h('td', h('b', t.id)), h('td', t.priority === 'high' ? h('b', { style: { color: 'var(--err)' } }, '! ') : '', t.title, t.question ? h('span.small', { style: { color: 'var(--err)' } }, '  (pergunta)') : ''),
       h('td', t.assignee_name || '—'), h('td', h('div.row', statusDot(t), t.running ? 'Rodando…' : t.status_label)),
-      h('td', t.origin === 'manual' ? 'Manual' : h('span', { style: { color: 'var(--navy)', fontWeight: 'bold' } }, 'Agente')),
+      h('td', t.origin?.startsWith('agent:') ? h('span', { style: { color: 'var(--navy)', fontWeight: 'bold' } }, 'Agente') : t.origin?.startsWith('importado') ? 'Cartão' : 'Manual'),
       h('td', h('button.btn', { style: { minHeight: '18px', padding: '0 8px' }, onclick: () => openTask(ctx, t.id) }, 'Abrir…'))))
       : [h('tr', h('td.empty', { colSpan: 6 }, 'Nenhuma atividade. Crie à mão ou gere com um agente.'))]));
     actions.replaceChildren(...(sp ? [

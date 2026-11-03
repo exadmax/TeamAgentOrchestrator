@@ -31,7 +31,7 @@ func TestEndToEnd(t *testing.T) {
 	if err := a.RunAgent(target, "Responda apenas com a palavra: pronto"); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { a.shutdown(nil) }) // never leave the CLI (and what it spawned) running
+	t.Cleanup(func() { _ = a.ServiceShutdown() }) // never leave the CLI (and what it spawned) running
 	busy := func() bool {
 		for _, v := range a.Snapshot().Agents {
 			if v.ID == target {

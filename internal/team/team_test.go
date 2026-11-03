@@ -78,3 +78,26 @@ func TestSaveLoad(t *testing.T) {
 		t.Fatalf("load = %+v ok=%v err=%v", got, ok, err)
 	}
 }
+
+func TestFallbackValidatedAndClearedOnRemove(t *testing.T) {
+	tm := Starter("demo")
+	eng := tm.Agents[2]
+	eng.Fallback = eng.ID
+	if err := tm.Update(eng); err == nil {
+		t.Fatal("self fallback accepted")
+	}
+	eng.Fallback = "ninguem"
+	if err := tm.Update(eng); err == nil {
+		t.Fatal("unknown fallback accepted")
+	}
+	eng.Fallback = tm.Agents[3].ID
+	if err := tm.Update(eng); err != nil {
+		t.Fatal(err)
+	}
+	if err := tm.Remove(eng.Fallback); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := tm.Get(eng.ID); got.Fallback != "" {
+		t.Fatalf("fallback = %q after remove", got.Fallback)
+	}
+}

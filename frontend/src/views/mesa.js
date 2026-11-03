@@ -23,7 +23,8 @@ function speech(t, a) {
     case 'proposed': return { say: `Proponho: ${t.title}. Posso seguir?`, tip: 'aprovar a proposta (Responder) ou arquivar.' };
     case 'ready': return { say: `Posso começar ${t.id}: ${t.title}?`, tip: 'Responder manda o agente começar agora.' };
     case 'in_progress': return { say: t.summary || `Estou com ${t.title}.`, tip: 'Responder manda o agente continuar.' };
-    case 'review': return { say: `Terminei ${t.id}: ${t.summary || t.title}`, tip: 'Responder pede a revisão a um agente de outro cliente.' };
+    case 'review': if (t.approved) return { say: `${t.id} foi aprovada na revisão. Posso juntar a branch ${t.branch}?`, tip: 'Responder faz o merge (pelo PR, quando houver).' };
+      return { say: `Terminei ${t.id}: ${t.summary || t.title}`, tip: 'Responder pede a revisão a um agente de outro cliente.' };
     default: return { say: `${t.id} concluída.`, tip: 'nada a fazer; arquive para tirar do quadro.' };
   }
 }
@@ -64,6 +65,7 @@ export default function mesa(ctx) {
     }
     if (t.question) return answer(ctx, t);
     if (t.status === 'proposed') return ctx.call('ApproveTask', t.id).then(() => toast(`${t.id} aprovada.`));
+    if (t.status === 'review' && t.approved) return ctx.call('MergeTask', t.id).then(() => toast(`${t.id} concluída com merge.`));
     if (t.status === 'review') return ctx.call('ReviewTask', t.id).then(() => toast(`${t.id} foi para revisão.`));
     if (t.status === 'ready' || t.status === 'in_progress') return ctx.call('RunTask', t.id).then(() => toast(`${t.assignee_name} começou ${t.id}.`));
     return openTask(ctx, t.id);

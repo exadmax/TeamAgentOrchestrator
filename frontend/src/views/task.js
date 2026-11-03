@@ -1,8 +1,8 @@
 // Task dialog: details, pipeline, history and the actions that move a task.
 import { h, dialog, toast, hhmm } from '../ui.js';
 
-const PHASE = { start: 'começar', work: 'trabalho', review: 'revisão', verdict: 'parecer' };
-const SYM = { ok: '✓', failed: '✗', blocked: '?', running: '…', pending: '·' };
+const PHASE = { start: 'começar', work: 'trabalho', submit: 'commit', pr: 'PR', review: 'revisão', verdict: 'parecer', merge: 'merge' };
+const SYM = { ok: '✓', failed: '✗', blocked: '?', running: '…', pending: '·', skipped: '–' };
 
 export function statusDot(t) {
   const st = t.question ? 'erro' : t.running ? 'ativo' : t.status === 'done' ? 'pausado' : t.status === 'in_progress' || t.status === 'review' ? 'ativo' : 'ocioso';
@@ -51,8 +51,10 @@ export function openTask(ctx, id) {
         h('div.form', { style: { gridTemplateColumns: '110px 1fr' } },
           h('label', 'Atividade:'), title, h('label', 'Pronto quando:'), done, h('label', 'Responsável:'), who,
           h('label', 'Revisor:'), rev, h('label', 'Sprint:'), sprint, h('label', 'Prioridade:'), h('label.radio', high, 'alta'),
-          h('label', 'Status:'), h('div.row', statusDot(t), h('b', busy ? 'Rodando…' : t.status_label), t.origin !== 'manual' ? h('span.muted', `· criada por ${t.origin.slice(6)}`) : '')),
-        h('div.row', { style: { gap: '10px', flexWrap: 'wrap' } }, 'Etapas:', (t.phases || []).map((p) => h('span', { title: p.agent || '' }, `${SYM[p.status] || '·'} ${PHASE[p.phase]}${p.attempts > 1 ? ` (${p.attempts}×)` : ''}`))),
+          h('label', 'Status:'), h('div.row', statusDot(t), h('b', busy ? 'Rodando…' : t.status_label), t.origin?.startsWith('agent:') ? h('span.muted', `· criada por ${t.origin.slice(6)}`) : t.origin?.startsWith('importado') ? h('span.muted', `· ${t.origin}`) : '')),
+        h('div.row', { style: { gap: '10px', flexWrap: 'wrap' } }, 'Etapas:', (t.phases || []).map((p) => h('span', { title: [p.agent, p.model, p.detail].filter(Boolean).join(' · ') },
+          `${SYM[p.status] || '·'} ${PHASE[p.phase] || p.phase}${p.attempts > 1 ? ` (${p.attempts}×)` : ''}`))),
+        t.branch ? h('div', h('b', 'Branch: '), h('code', t.branch), t.pr ? [' · ', h('b', 'PR: '), t.pr] : null, t.approved ? h('b', { style: { color: 'var(--ok)' } }, ' · aprovada, falta o merge') : null) : null,
         t.question ? h('div.suggest.sunken', { style: { color: 'var(--err)' } }, h('b', 'Pergunta: '), t.question) : null,
         t.summary ? h('div', h('b', 'Último resultado: '), t.summary) : null,
         h('div', 'Histórico:'),
@@ -61,7 +63,8 @@ export function openTask(ctx, id) {
         t.status === 'proposed' ? act('Aprovar', () => ctx.call('ApproveTask', t.id), { def: true }) : null,
         t.question ? act('Responder…', () => answer(ctx, t), { def: true, off: busy }) : null,
         ['ready', 'in_progress'].includes(t.status) && !t.question ? act('Rodar agora', () => ctx.call('RunTask', t.id), { def: true, off: busy || !t.assignee }) : null,
-        t.status === 'review' ? act('Revisar', () => ctx.call('ReviewTask', t.id), { def: true, off: busy }) : null,
+        t.status === 'review' && !t.approved ? act('Revisar', () => ctx.call('ReviewTask', t.id), { def: true, off: busy }) : null,
+        t.status === 'review' && t.approved ? act('Fazer merge', async () => { await ctx.call('MergeTask', t.id); toast(`${t.id} entrou na ${ctx.board?.git?.base || 'base'}.`); }, { def: true, off: busy }) : null,
         t.status !== 'done' ? act('Delegar…', () => delegate(ctx, t), { off: busy }) : null,
         t.status === 'done' ? act('Reabrir…', async () => { const r = await askText(`Reabrir ${t.id}`, 'Por que reabrir?'); if (r !== undefined) await ctx.call('ReopenTask', t.id, r); }) : null,
         act('Salvar', save),

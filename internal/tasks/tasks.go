@@ -57,6 +57,9 @@ type Event struct {
 	What string    `json:"what"`
 }
 type Task struct {
+	Branch   string    `json:"branch,omitempty"`
+	PR       string    `json:"pr,omitempty"`
+	Approved bool      `json:"approved,omitempty"`
 	ID       string    `json:"id"`
 	Title    string    `json:"title"`
 	Done     string    `json:"done"`
@@ -378,6 +381,7 @@ func (b *Board) Start(id, by string, now time.Time) error {
 		if e := require(t, Ready, InProgress); e != nil {
 			return "", e
 		}
+		t.Approved = false
 		t.Status = InProgress
 		t.Question = ""
 		return "começou", nil
@@ -424,12 +428,18 @@ func (b *Board) Review(id, by string, approve bool, note string, now time.Time) 
 		}
 		verdict := "changes"
 		what := "revisão: alterações solicitadas"
+		t.Approved = false
 		t.Status = InProgress
 		t.Question = ""
 		if approve {
 			verdict = "approve"
 			what = "revisão: aprovada"
 			t.Status = Done
+			if t.Branch != "" {
+				t.Status = Review
+				t.Approved = true
+				what = "revisão: aprovada; falta o merge"
+			}
 		}
 		t.Verdicts = append(t.Verdicts, by+":"+verdict)
 		if note != "" {
@@ -457,6 +467,7 @@ func (b *Board) Reopen(id, by, reason string, now time.Time) error {
 		}
 		t.Status = Ready
 		t.Archived = false
+		t.Approved = false
 		t.Verdicts = nil
 		return "reaberta: " + reason, nil
 	})
@@ -516,4 +527,36 @@ func (b *Board) Open() []Task {
 		return a.ID < c.ID
 	})
 	return out
+}
+
+// SetGit updates supplied git references, recording only changes.
+func (b *Board) SetGit(id, branch, pr, by string, now time.Time) error {
+	i, err := b.taskIndex(id)
+	if err != nil {
+		return err
+	}
+	t := &b.Tasks[i]
+	if branch != "" && branch != t.Branch {
+		t.Branch = branch
+		record(t, by, "branch "+branch, now)
+	}
+	if pr != "" && pr != t.PR {
+		t.PR = pr
+		record(t, by, "PR "+pr, now)
+	}
+	return nil
+}
+
+// Merged completes an approved task after its merge.
+func (b *Board) Merged(id, by string, now time.Time) error {
+	return b.mutate(id, by, now, func(t *Task) (string, error) {
+		if err := require(t, Review); err != nil {
+			return "", err
+		}
+		if !t.Approved {
+			return "", fmt.Errorf("tarefa %s precisa estar aprovada", id)
+		}
+		t.Status = Done
+		return "merge feito", nil
+	})
 }
