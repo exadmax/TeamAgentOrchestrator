@@ -48,14 +48,12 @@ jobs:
             exit 1
           fi
 
-      - name: Frontend
-        run: npm --prefix frontend ci && npm --prefix frontend run build
+      # Generates the bindings, builds the frontend (embedded in the exe), the exe and the installer.
+      - name: Package
+        run: wails3 package
 
       - name: Test
         run: go test ./...
-
-      - name: Package
-        run: wails3 package
 
       - uses: actions/upload-artifact@v4
         with:
