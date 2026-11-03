@@ -46,7 +46,7 @@ e os cartões do JinChronicles; a interface roda no Wails v3.
 | `internal/importer`, campos git e merge em `internal/tasks` | Codex |
 | `app_git.go`, `app_models.go`, migração para o Wails v3, telas, `docs/index.html` | Claude Code |
 
-## M4 — Distribuição e internacionalização (em andamento)
+## M4 — Internacionalização (concluído)
 
 **Internacionalização (feita):** o sistema inteiro em inglês por padrão e português do Brasil como opção
 (Ferramentas → Idioma): interface, mensagens e erros do backend, histórico das tarefas (gravado como chave +
@@ -54,11 +54,34 @@ argumentos, então muda de idioma junto), prompts enviados aos agentes, parecer 
 README e documentos em inglês com versão em português, e a página do GitHub Pages bilíngue. Catálogos em
 `internal/i18n/locales/` e `frontend/src/i18n/`, com teste de paridade de chaves e marcadores.
 
-**A seguir:** instalar e atualizar clientes via npm pela aba Clientes, auto-reparo, instalador NSIS,
-builds Linux e macOS.
-
 | Pacote | Dono no M4 (i18n) |
 |---|---|
 | `internal/*` traduzidos, histórico com chave | Codex |
 | `frontend/` traduzido, troca de idioma na interface | Codex |
 | `internal/i18n`, camada do app, prompts, documentos, Pages | Claude Code |
+
+## M5 — Executável, instalador e releases para Windows (concluído)
+
+- **Instalador** (NSIS, `build/windows/nsis/project.nsi`): instala só para o usuário, sem pedir administrador, em
+  `%LOCALAPPDATA%\Programs\TeamAgent Orchestrator`, com atalhos no menu Iniciar e na área de trabalho, página da
+  licença GPL, inglês e português (escolhido pelo idioma do Windows e lembrado pelo desinstalador), "executar agora"
+  na última página, WebView2 instalado se faltar e atualização no lugar. Instalador e desinstalador esperam se o app
+  estiver aberto.
+- **Desinstalador:** remove o programa, os atalhos, o registro e o cache do WebView2; mantém as configurações e os projetos.
+- **Primeira execução:** aberto pelo atalho, a pasta atual é a de instalação; por isso o app só abre a pasta atual
+  se ela for um projeto (`tao.json`) ou repositório git. Senão, uma janela de boas-vindas pede uma pasta.
+- **Releases:** `.github/workflows/release.yml` testa e gera o instalador no Windows a cada pull request (fica como
+  artefato) e, numa tag `v*` igual à versão de `build/config.yml`, publica uma release no GitHub com
+  `TeamAgent-amd64-installer.exe`. O site do Pages ganhou a seção Baixar, que aponta para a última release.
+- **Versão:** um número só, em `build/config.yml`; o `TestVersionsMatch` confere as cópias (recursos do exe,
+  instalador, pacotes, barra de status).
+- **Licença:** GPL-3.0-or-later (`LICENSE`).
+
+Gerar localmente: `wails3 package` (precisa do NSIS: `winget install NSIS.NSIS`) grava
+`bin/TeamAgent-amd64-installer.exe`; `INSTALL_SCOPE=machine` gera um instalador para Arquivos de Programas.
+
+O instalador ainda não tem assinatura digital: o SmartScreen mostra "editor desconhecido".
+
+## M6 — A seguir
+
+Instalar e atualizar clientes via npm pela aba Clientes, auto-reparo, builds Linux e macOS, assinatura de código.

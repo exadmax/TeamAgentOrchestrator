@@ -431,5 +431,9 @@
   "language.portuguese": "Português (Brasil)",
   "desk.sign.title": "IA Corp",
   "desk.sign.subtitle": "Soluções com IA",
-  "desk.sign.badge": "IA"
+  "desk.sign.badge": "IA",
+  "welcome.title": "Boas-vindas",
+  "welcome.heading": "Nenhum projeto aberto",
+  "welcome.text": "Escolha a pasta de um projeto (de preferência um repositório git). Se ela não tiver tao.json, ganha um time inicial.",
+  "welcome.open": "Abrir projeto…"
 }

@@ -10,3 +10,4 @@ frontend/dist/*
 frontend/node_modules/
 *.log
 frontend/package.json.md5
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe

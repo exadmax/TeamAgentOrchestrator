@@ -431,5 +431,9 @@
   "language.portuguese": "Portuguese (Brazil)",
   "desk.sign.title": "AI Corp",
   "desk.sign.subtitle": "AI Solutions",
-  "desk.sign.badge": "AI"
+  "desk.sign.badge": "AI",
+  "welcome.title": "Welcome",
+  "welcome.heading": "No project open",
+  "welcome.text": "Choose the folder of a project (ideally a git repository). If it has no tao.json, it gets a starter team.",
+  "welcome.open": "Open project…"
 }

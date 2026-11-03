@@ -19,6 +19,7 @@
   <a class="btn" href="#tasks">Tasks and git</a>
   <a class="btn" href="#quotas">Quotas</a>
   <a class="btn" href="#import">Import</a>
+  <a class="btn" href="#download">Download</a>
   <a class="btn" href="#install">Install</a>
   <a class="btn" href="#milestones">Milestones</a>
   <a class="btn lang" href="pt-BR/" hreflang="pt-BR" title="Ler em português">🌐 Português</a>
@@ -39,8 +40,8 @@
           answer its questions at the desk and follow the output live.</p>
         <p>In English (default) or Portuguese: <b>Tools → Language</b> switches the interface, the messages and even the prompts sent to the agents.</p>
         <div class="cta">
-          <a class="btn default" href="https://github.com/exadmax/TeamAgentOrchestrator">See it on GitHub</a>
-          <a class="btn" href="#install">How to install</a>
+          <a class="btn default" href="#download">⬇ Download for Windows</a>
+          <a class="btn" href="https://github.com/exadmax/TeamAgentOrchestrator">See it on GitHub</a>
           <a class="btn" href="#screens">Screen tour</a>
         </div>
       </div>
@@ -220,8 +221,34 @@
   </section>
 
   <!-- ============================================================ install -->
+  <!-- ============================================================ download -->
+  <section class="win raised" id="download">
+    <div class="titlebar"><img src="assets/av_e_codigo.png" alt="">Download</div>
+    <div class="win-body">
+      <div class="dl sunken">
+        <img src="assets/av_p_robo.png" alt="">
+        <div>
+          <h3>TeamAgent Orchestrator for Windows</h3>
+          <p class="small muted">Windows 10 or 11, 64-bit · installer of about 9 MB <span id="dl-latest"></span></p>
+          <div class="cta">
+            <a class="btn default" href="https://github.com/exadmax/TeamAgentOrchestrator/releases/latest/download/TeamAgent-amd64-installer.exe">⬇ Download the installer</a>
+            <a class="btn" href="https://github.com/exadmax/TeamAgentOrchestrator/releases">All versions and release notes</a>
+          </div>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><b>Run the installer.</b> It installs for your user only, with no administrator prompt, in <code>%LOCALAPPDATA%\Programs</code>, and adds shortcuts to the Start menu and the desktop. It speaks English and Portuguese.</li>
+        <li><b>Windows SmartScreen</b> may say the publisher is unknown: the installer is not code-signed yet. Click <i>More info → Run anyway</i>.</li>
+        <li><b>Install at least one agent client</b> and log in to it (needs Node 20+):
+          <pre>npm i -g @anthropic-ai/claude-code @openai/codex @opencode/cli @google/gemini-cli</pre></li>
+        <li><b>Open a project:</b> on the first run the app asks for a folder, ideally a git repository. Without a <code>tao.json</code>, it gets a starter team.</li>
+      </ol>
+      <p class="small muted">To remove it: Settings → Apps → TeamAgent Orchestrator → Uninstall. Your settings and your projects are kept. The installer and the app are free software under the GPL-3.0.</p>
+    </div>
+  </section>
+
   <section class="win raised" id="install">
-    <div class="titlebar"><img src="assets/av_e_codigo.png" alt="">Install and run</div>
+    <div class="titlebar"><img src="assets/av_e_codigo.png" alt="">Build from source</div>
     <div class="win-body">
       <ol class="steps">
         <li><b>Requirements:</b> Go 1.26+, Node 20+ and the Wails v3 CLI.
@@ -257,7 +284,9 @@ go test ./...   <span class="c"># backend tests</span></pre></li>
         <div class="ms sunken" style="background:#fff"><b>M1</b> <span class="st" style="background:var(--ok)">done</span><p class="small">Go core, Win95 window, org chart, Console with live output, Tokens, Clients.</p></div>
         <div class="ms sunken" style="background:#fff"><b>M2</b> <span class="st" style="background:var(--ok)">done</span><p class="small">Sprints and tasks, generation by an agent, review on another client, Agent Desk.</p></div>
         <div class="ms sunken" style="background:#fff"><b>M3</b> <span class="st" style="background:var(--ok)">done</span><p class="small">Branch and PR per task, merge, model switching, reserve agent, card importer, Wails v3.</p></div>
-        <div class="ms sunken" style="background:#fff"><b>M4</b> <span class="st" style="background:var(--warn)">in progress</span><p class="small">Internationalization done (English and Portuguese). Next: install and update the clients from the Clients tab, installer, Linux and macOS builds.</p></div>
+        <div class="ms sunken" style="background:#fff"><b>M4</b> <span class="st" style="background:var(--ok)">done</span><p class="small">Internationalization: English by default, Portuguese (Brazil) optional, in every layer.</p></div>
+        <div class="ms sunken" style="background:#fff"><b>M5</b> <span class="st" style="background:var(--ok)">done</span><p class="small">Windows executable and installer, GitHub releases and this download section.</p></div>
+        <div class="ms sunken" style="background:#fff"><b>M6</b> <span class="st" style="background:var(--warn)">next</span><p class="small">Install and update the clients from the Clients tab, self-repair, Linux and macOS builds, code signing.</p></div>
       </div>
       <p class="small muted" style="margin-top:14px">Built by many hands: Claude Code coordinated, and parts of the code were written by Codex and OpenCode,
         the same kind of team the orchestrator organizes.</p>
@@ -267,7 +296,7 @@ go test ./...   <span class="c"># backend tests</span></pre></li>
 
 <footer>
   TeamAgent Orchestrator · <a href="https://github.com/exadmax/TeamAgentOrchestrator">github.com/exadmax/TeamAgentOrchestrator</a><br>
-  Drawings from the prototype made in Claude Design · Pixelify Sans and VT323 fonts (SIL Open Font License)
+  Drawings from the prototype made in Claude Design · Pixelify Sans and VT323 fonts (SIL Open Font License)<br>Free software under the <a href="https://github.com/exadmax/TeamAgentOrchestrator/blob/main/LICENSE">GNU GPL v3</a>
 </footer>
 
 <script>
@@ -352,6 +381,13 @@ function simulate() {
 }
 ['s-auto', 's-model', 's-all', 's-reserve', 's-swap'].forEach((id) => $(id).addEventListener('change', simulate));
 simulate();
+</script>
+<script>
+// latest release: version and date next to the download button
+fetch('https://api.github.com/repos/exadmax/TeamAgentOrchestrator/releases/latest')
+  .then((r) => (r.ok ? r.json() : null))
+  .then((r) => { if (r) document.getElementById('dl-latest').textContent = `· latest: ${r.tag_name} (${new Date(r.published_at).toLocaleDateString('en-US')})`; })
+  .catch(() => {});
 </script>
 </body>
 </html>

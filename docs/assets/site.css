@@ -101,7 +101,7 @@ pre .c { color: #808080; }
 .steps { counter-reset: s; list-style: none; padding: 0; }
 .steps li { counter-increment: s; padding-left: 38px; position: relative; margin: 10px 0; }
 .steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 26px; height: 26px; display: grid; place-items: center; background: var(--navy); color: #fff; font: bold 14px var(--pixel); }
-.milestones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.milestones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .ms { padding: 12px; }
 .ms b { font-family: var(--pixel); font-size: 18px; }
 .ms .st { font-size: 12px; font-weight: bold; padding: 1px 6px; color: #fff; }
@@ -110,6 +110,11 @@ pre .c { color: #808080; }
 footer { color: #fff; text-align: center; padding: 24px 16px 40px; font-size: 13px; }
 footer a { color: #fff; }
 
+.dl { display: flex; gap: 18px; align-items: center; padding: 16px; background: #fff; margin-bottom: 8px; }
+.dl img { width: 80px; height: 80px; image-rendering: pixelated; flex: none; }
+.dl h3 { margin: 0 0 4px; }
+.dl .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+
 @media (max-width: 860px) {
   .hero, .tabpanel .about, .sim { grid-template-columns: 1fr; }
   .tabpanel ul { columns: 1; }
@@ -117,4 +122,5 @@ footer a { color: #fff; }
   .milestones { grid-template-columns: 1fr 1fr; }
   .hero h1 { font-size: 27px; }
   .win-body { padding: 14px; }
+  .dl { flex-direction: column; align-items: flex-start; }
 }

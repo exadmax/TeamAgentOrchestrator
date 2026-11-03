@@ -1,0 +1,71 @@
+# Builds the Windows installer.
+# - On a pull request or by hand: tests and builds, and keeps the installer as a workflow artifact.
+# - On a version tag (v0.5.0): the same, then publishes a GitHub release with the installer attached.
+#   The tag must match the version in build/config.yml.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Tools (Wails CLI, NSIS)
+        run: |
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+          command -v makensis || choco install nsis -y --no-progress
+          echo "C:/Program Files (x86)/NSIS" >> "$GITHUB_PATH"
+
+      - name: Version
+        id: version
+        run: |
+          version=$(sed -nE 's/^\s*version:\s*"([0-9.]+)".*/\1/p' build/config.yml)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match build/config.yml version $version"
+            exit 1
+          fi
+
+      - name: Frontend
+        run: npm --prefix frontend ci && npm --prefix frontend run build
+
+      - name: Test
+        run: go test ./...
+
+      - name: Package
+        run: wails3 package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TeamAgent-${{ steps.version.outputs.version }}-windows-amd64
+          path: bin/TeamAgent-amd64-installer.exe
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" bin/TeamAgent-amd64-installer.exe \
+            --title "TeamAgent Orchestrator $GITHUB_REF_NAME" --generate-notes
