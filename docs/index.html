@@ -23,7 +23,7 @@ a { color: var(--navy); }
 img { max-width: 100%; display: block; }
 code, .mono { font-family: var(--mono); font-size: 1.15em; }
 h1, h2, h3 { font-family: var(--pixel); font-weight: 700; line-height: 1.2; margin: 0 0 .5em; }
-.wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 16px; }
 
 /* bevels */
 .raised { background: var(--face); box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--light), inset -2px -2px var(--shadow), inset 2px 2px var(--hi); }
@@ -71,14 +71,19 @@ h1, h2, h3 { font-family: var(--pixel); font-weight: 700; line-height: 1.2; marg
 .tag { display: inline-block; color: #fff; font: bold 12px var(--ui); padding: 1px 7px; border-radius: 2px; }
 
 /* tab control (screen tour) */
-.tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 4px; }
-.tabs button { font: 13px var(--ui); background: var(--face); border: 0; padding: 5px 12px 4px; cursor: pointer; position: relative; top: 2px;
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 4px; position: relative; z-index: 1; }
+.tabs button { font: 14px var(--ui); background: var(--face); border: 0; padding: 6px 14px 5px; cursor: pointer; position: relative; top: 2px;
   box-shadow: inset -1px 0 var(--dark), inset 1px 1px var(--hi), inset -2px 0 var(--shadow); }
-.tabs button.on { font-weight: bold; top: 0; padding-bottom: 6px; z-index: 1; }
-.tabpanel { padding: 16px; display: grid; grid-template-columns: 1fr 300px; gap: 18px; align-items: start; }
-.tabpanel .shot { padding: 3px; }
-.tabpanel h3 { font-size: 20px; color: var(--navy); }
-.tabpanel ul { padding-left: 18px; margin: .4em 0; }
+.tabs button.on { font-weight: bold; top: 0; padding-bottom: 9px; margin-bottom: -2px; }
+.tabpanel { padding: 16px; }
+.tabpanel .about { display: grid; grid-template-columns: 260px 1fr; gap: 6px 24px; align-items: start; margin-bottom: 14px; }
+.tabpanel .shot { padding: 3px; background: #000; }
+.tabpanel .shot a { display: block; cursor: zoom-in; }
+.tabpanel .shot img { width: 100%; height: auto; }
+.tabpanel h3 { font-size: 22px; color: var(--navy); margin: 0; }
+.tabpanel ul { padding-left: 18px; margin: 0; columns: 2; column-gap: 28px; }
+.tabpanel li { break-inside: avoid; margin-bottom: 4px; }
+.tabpanel .hint { font-size: 12px; color: #444; margin: 6px 0 0; text-align: right; }
 
 /* pipeline */
 .pipe { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 14px; }
@@ -90,7 +95,7 @@ h1, h2, h3 { font-family: var(--pixel); font-weight: 700; line-height: 1.2; marg
 .explain h4 { margin: 0 0 6px; font: bold 16px var(--pixel); }
 
 /* simulator */
-.sim { display: grid; grid-template-columns: 280px 1fr; gap: 16px; }
+.sim { display: grid; grid-template-columns: 360px 1fr; gap: 16px; }
 .sim label { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; cursor: pointer; }
 .sim .out { background: #000; color: #c0c0c0; font: 19px/1.25 var(--mono); padding: 12px 14px; min-height: 190px; }
 .sim .out .g { color: #33ff66; } .sim .out .y { color: #ffff55; } .sim .out .r { color: #ff6b6b; }
@@ -114,7 +119,8 @@ footer { color: #fff; text-align: center; padding: 24px 16px 40px; font-size: 13
 footer a { color: #fff; }
 
 @media (max-width: 860px) {
-  .hero, .tabpanel, .sim { grid-template-columns: 1fr; }
+  .hero, .tabpanel .about, .sim { grid-template-columns: 1fr; }
+  .tabpanel ul { columns: 1; }
   .grid3, .grid2 { grid-template-columns: 1fr; }
   .milestones { grid-template-columns: 1fr 1fr; }
   .hero h1 { font-size: 27px; }
@@ -399,8 +405,9 @@ const panel = document.getElementById('tabpanel');
 function show(i) {
   const [img, , title, items] = SCREENS[i];
   [...tabs.children].forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i); });
-  panel.innerHTML = `<div class="shot sunken"><img src="img/${img}.png" alt="Tela ${title}" loading="lazy" width="1280" height="820"></div>
-    <div><h3>${title}</h3><ul>${items.map((x) => `<li>${x}</li>`).join('')}</ul></div>`;
+  panel.innerHTML = `<div class="about"><h3>${title}</h3><ul>${items.map((x) => `<li>${x}</li>`).join('')}</ul></div>
+    <div class="shot sunken"><a href="img/${img}.png" target="_blank" rel="noopener"><img src="img/${img}.png" alt="Tela ${title}" width="1280" height="820"></a></div>
+    <p class="hint">Clique na imagem para abrir no tamanho real.</p>`;
 }
 SCREENS.forEach(([, label], i) => {
   const b = document.createElement('button');
