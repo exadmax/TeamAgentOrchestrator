@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/fsx"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,7 +75,7 @@ func (t *Team) Save(dir string) error {
 	if err := os.WriteFile(tmp, append(data, '\n'), 0o644); err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	return fsx.Replace(tmp, path)
 }
 
 // Starter is the default team of a new project: a director on Claude, an architect,

@@ -27,6 +27,7 @@ const (
 	consoleLimit  = 400 // lines kept per agent console
 	activityLimit = 60  // lines in "Atividade Recente"
 	testAgent     = "__test__"
+	maxRun        = 45 * time.Minute // a session longer than this is a runaway agent
 )
 
 // Agent statuses shown in the UI.
@@ -100,11 +101,14 @@ type App struct {
 	failed   map[string]bool
 	console  map[string][]Line
 	activity []Line
+	taskRuns map[string]bool // tasks with a session running
+
+	bmu sync.Mutex // serializes read-modify-write of tao.tasks.json
 }
 
 func NewApp() *App {
 	return &App{catalog: clients.Catalog(), runs: map[string]context.CancelFunc{}, failed: map[string]bool{},
-		console: map[string][]Line{}}
+		console: map[string][]Line{}, taskRuns: map[string]bool{}}
 }
 
 func (a *App) startup(ctx context.Context) {
@@ -164,6 +168,7 @@ func (a *App) ChooseProject() (Snapshot, error) {
 	saveLastProject(a.dir)
 	snap := a.Snapshot()
 	a.emit("snapshot", snap)
+	a.emit("board", a.Board())
 	return snap, nil
 }
 
@@ -350,7 +355,7 @@ func (a *App) RunAgent(id, prompt string) error {
 	model := a.modelLocked(ag)
 	full := a.promptLocked(ag, prompt)
 	a.mu.Unlock()
-	return a.launch(ag.ID, ag.Client, model, full, prompt)
+	return a.launch(ag.ID, ag.Client, model, full, prompt, "", nil)
 }
 
 // TestClient runs a quick prompt on a client (the "Testar" button of the Clientes tab).
@@ -358,7 +363,7 @@ func (a *App) TestClient(clientID, model, prompt string) error {
 	if strings.TrimSpace(prompt) == "" {
 		prompt = "Olá, você está pronto? Responda em uma linha."
 	}
-	return a.launch(testAgent, clientID, model, prompt, prompt)
+	return a.launch(testAgent, clientID, model, prompt, prompt, "", nil)
 }
 
 // promptLocked wraps the instruction with who the agent is in the org chart.
@@ -382,7 +387,17 @@ func (a *App) promptLocked(ag team.Agent, instruction string) string {
 	return b.String()
 }
 
-func (a *App) launch(agentID, clientID, model, fullPrompt, shown string) error {
+// Outcome is how a session ended, handed to the caller that started it (task flow).
+type Outcome struct {
+	Kind     failure.Kind // "" = ok
+	Final    string       // last thing the agent said
+	Question string       // the agent stopped on a question
+	Exit     int
+}
+
+// launch starts a session. task tags the session with a task id (""= free instruction);
+// done, if not nil, runs after the session is recorded.
+func (a *App) launch(agentID, clientID, model, fullPrompt, shown, task string, done func(Outcome)) error {
 	c, ok := clients.Find(a.catalog, clientID)
 	if !ok {
 		return fmt.Errorf("cliente %q desconhecido", clientID)
@@ -414,23 +429,28 @@ func (a *App) launch(agentID, clientID, model, fullPrompt, shown string) error {
 		defer cancel()
 		res := runner.Run(ctx, runner.Spec{
 			Client: clientID, Argv: argv, Dir: dir, Env: c.Env, LogPath: logPath,
-			IdleKill: failure.IdleKill, Heartbeat: failure.Heartbeat,
+			IdleKill: failure.IdleKill, Heartbeat: failure.Heartbeat, MaxRun: maxRun,
 		}, runner.Hooks{
 			OnEvent: func(ev stream.Event) { a.push(eventLine(agentID, ev)) },
 			OnIdle: func(silent time.Duration) {
 				a.emit("idle", map[string]any{"agent": agentID, "seconds": int(silent.Seconds())})
 			},
 		})
-		a.finish(agentID, clientID, model, run, logPath, res, st)
+		out := a.finish(agentID, clientID, model, run, logPath, task, res, st)
+		if done != nil {
+			done(out)
+		}
 	}()
 	return nil
 }
 
 // finish classifies the run, records the session and the quota clock, and frees the agent.
-func (a *App) finish(agentID, clientID, model, run, logPath string, res runner.Result, st *store.Store) {
+func (a *App) finish(agentID, clientID, model, run, logPath, task string, res runner.Result, st *store.Store) Outcome {
 	kind := failure.Classify(res.Exit, res.Tail)
 	if kind == "" && res.IsError {
-		kind = failure.Classify(1, res.Tail)
+		// Exit 0 but the CLI reported an error: classify only its own error messages. The raw tail
+		// carries JSON keys such as "rate_limit_event" that would read as quota.
+		kind = failure.Classify(1, strings.Join(res.Errors, "\n"))
 	}
 	if res.LaunchErr != "" {
 		kind = failure.Launch
@@ -438,7 +458,7 @@ func (a *App) finish(agentID, clientID, model, run, logPath string, res runner.R
 	if model == "" {
 		model = res.Model
 	}
-	sess := store.Session{Run: run, Agent: agentID, Client: clientID, Model: model, Mode: "headless",
+	sess := store.Session{Run: run, Agent: agentID, Client: clientID, Model: model, Mode: "headless", Task: task,
 		Start: res.Start, End: res.End, Exit: res.Exit, Error: string(kind), Log: logPath,
 		Usage: store.Usage{Input: res.Usage.Input, Output: res.Usage.Output, CacheRead: res.Usage.CacheRead,
 			CacheWrite: res.Usage.CacheWrite, CostUSD: res.Usage.CostUSD},
@@ -483,6 +503,7 @@ func (a *App) finish(agentID, clientID, model, run, logPath string, res runner.R
 	a.mu.Unlock()
 	a.push(end)
 	a.emit("snapshot", a.Snapshot())
+	return Outcome{Kind: kind, Final: res.Final, Question: sess.Question, Exit: res.Exit}
 }
 
 // StopAgent cancels the running session of an agent.

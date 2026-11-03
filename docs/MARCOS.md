@@ -2,7 +2,7 @@
 
 Um marco por vez; cada um termina com o Diogo vendo o resultado.
 
-## M1 — Núcleo em Go e janela Win95 (atual)
+## M1 — Núcleo em Go e janela Win95 (concluído)
 
 Pronto quando: `wails build` gera o `.exe`; a janela abre no visual Win95; o organograma
 mostra e edita os agentes de `tao.json`; o assistente cria um agente novo; a aba Clientes
@@ -16,11 +16,18 @@ a saída ao vivo; a aba Tokens soma o uso das sessões; `go test ./...` passa.
 | `internal/clients` | OpenCode |
 | `internal/stream`, `internal/runner`, `internal/team`, `app.go`, `frontend/` | Claude Code |
 
-## M2 — Tarefas, sprints e Mesa do Agente
+## M2 — Tarefas, sprints e Mesa do Agente (concluído)
 
-Tarefas e sprints genéricas (substituem o `card.py`), geração de atividades por um agente,
-máquina de etapas por tarefa, Mesa do Agente (pergunta do agente → Responder, Delegar,
-Arquivar) e Quadro de Tarefas.
+Pronto quando: sprints criadas, iniciadas e fechadas com retro e transporte de atividades;
+atividades criadas à mão ou geradas por um agente (chegam como propostas); cada atividade
+roda no responsável, vai para revisão num agente de outro cliente e termina aprovada ou volta
+com mudanças; a pergunta final de um agente bloqueia a atividade e aparece na Mesa, onde
+Responder, Delegar e Arquivar agem sobre ela; o estado das etapas fica em `.tao/state/`.
+
+| Pacote | Dono no M2 |
+|---|---|
+| `internal/tasks` | Codex |
+| `internal/fsx`, `app_tasks.go`, telas Sprints/Mesa/tarefa, correções do runner | Claude Code |
 
 ## M3 — Fluxo git e resiliência
 

@@ -31,11 +31,12 @@ export default function inicio(ctx) {
       ...(s.agents || []).map(desk));
     const count = (st) => (s.agents || []).filter((a) => a.status === st).length;
     const total = (s.agents || []).length || 1;
-    const busy = Math.round((count('ativo') / total) * 100);
+    const sp = (ctx.board?.sprints || []).find((x) => x.status === 'active');
+    const busy = sp ? sp.progress.pct : Math.round((count('ativo') / total) * 100);
     side.replaceChildren(
       panel('Projeto Atual', [h('b', { style: { font: 'bold 14px var(--pixel)' } }, s.project || '—'), h('div.small.muted', { style: { wordBreak: 'break-all' } }, s.dir),
         h('div.row', { style: { marginTop: '8px' } }, h('div.progress.sunken.grow', Array.from({ length: Math.round(busy / 6.25) }, () => h('i'))), h('b', `${busy}%`)),
-        h('div.small.muted', 'do time trabalhando agora')]),
+        h('div.small.muted', sp ? `${sp.id} ${sp.title}: ${sp.progress.done}/${sp.progress.total} atividades` : 'do time trabalhando agora (nenhuma sprint ativa)')]),
       panel('Resumo do Time', [['ativo', 'trabalhando'], ['ocioso', 'ociosos'], ['pausado', 'pausados'], ['erro', 'com erro']]
         .map(([st, label]) => h('div.row', { style: { margin: '3px 0' } }, h(`span.dot.${st}`, { style: { borderRadius: 0, width: '12px', height: '12px' } }), `${count(st)} ${label}`))),
       panel('Atividade Recente', h('div.list.sunken.activity', { style: { height: '100%' } },
@@ -50,6 +51,7 @@ export default function inicio(ctx) {
   return {
     el,
     update: draw,
+    board: draw,
     line(l) {
       (lines[l.agent] ||= []).push(l);
       if (lines[l.agent].length > 50) lines[l.agent].shift();

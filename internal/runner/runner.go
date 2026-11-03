@@ -29,6 +29,7 @@ const (
 	tailLines   = 80      // lines kept for failure classification
 	maxLineSize = 4 << 20 // a single JSON line may carry a large tool result
 	pollEvery   = time.Second
+	maxErrors   = 10 // error texts kept per run
 )
 
 // Spec describes one run.
@@ -40,6 +41,7 @@ type Spec struct {
 	LogPath   string        // raw output log; "" = no log
 	IdleKill  time.Duration // kill after this long without output; 0 = never
 	Heartbeat time.Duration // call OnIdle every so often while silent; 0 = never
+	MaxRun    time.Duration // kill after this long in total, even with output (runaway agents); 0 = never
 }
 
 // Hooks receive what happens during the run. Any of them may be nil.
@@ -56,7 +58,8 @@ type Result struct {
 	Usage     stream.Tokens `json:"usage"`
 	Model     string        `json:"model"`
 	Session   string        `json:"session"`
-	IsError   bool          `json:"is_error"` // the CLI itself reported an error event
+	IsError   bool          `json:"is_error"`         // the CLI itself reported an error event
+	Errors    []string      `json:"errors,omitempty"` // texts of those error events, for classification
 	Start     time.Time     `json:"start"`
 	End       time.Time     `json:"end"`
 	LaunchErr string        `json:"launch_err,omitempty"`
@@ -122,6 +125,23 @@ func Run(ctx context.Context, spec Spec, hooks Hooks) Result {
 			tail = tail[len(tail)-tailLines:]
 		}
 	}
+	handle := func(line string) {
+		fmt.Fprintln(log, line)
+		keep(line)
+		for _, ev := range stream.Parse(spec.Client, []byte(line)) {
+			res.absorb(ev)
+			if hooks.OnEvent != nil {
+				hooks.OnEvent(ev)
+			}
+		}
+	}
+	stop := func(code int, msg string) int {
+		keep(msg)
+		fmt.Fprintln(log, msg)
+		kill(cmd)
+		<-waited
+		return code
+	}
 	last, lastBeat := time.Now(), time.Time{}
 	ticker := time.NewTicker(pollEvery)
 	defer ticker.Stop()
@@ -134,23 +154,15 @@ func Run(ctx context.Context, spec Spec, hooks Hooks) Result {
 				continue
 			}
 			last = time.Now()
-			fmt.Fprintln(log, line)
-			keep(line)
-			for _, ev := range stream.Parse(spec.Client, []byte(line)) {
-				res.absorb(ev)
-				if hooks.OnEvent != nil {
-					hooks.OnEvent(ev)
-				}
-			}
+			handle(line)
 		case <-ticker.C:
 			silent := time.Since(last)
 			if spec.IdleKill > 0 && silent >= spec.IdleKill {
-				msg := fmt.Sprintf("timeout: sem saída há %ds, ferramenta encerrada", int(silent.Seconds()))
-				keep(msg)
-				fmt.Fprintln(log, msg)
-				kill(cmd)
-				<-waited
-				code = ExitTimeout
+				code = stop(ExitTimeout, fmt.Sprintf("timeout: sem saída há %ds, ferramenta encerrada", int(silent.Seconds())))
+				continue
+			}
+			if spec.MaxRun > 0 && time.Since(res.Start) >= spec.MaxRun {
+				code = stop(ExitTimeout, fmt.Sprintf("timeout: sessão passou do tempo máximo de %s, ferramenta encerrada", spec.MaxRun))
 				continue
 			}
 			if spec.Heartbeat > 0 && silent >= spec.Heartbeat && time.Since(lastBeat) >= spec.Heartbeat && hooks.OnIdle != nil {
@@ -158,19 +170,11 @@ func Run(ctx context.Context, spec Spec, hooks Hooks) Result {
 				hooks.OnIdle(silent)
 			}
 		case <-ctx.Done():
-			keep("interrompido pelo usuário")
-			kill(cmd)
-			<-waited
-			code = ExitInterrupted
+			code = stop(ExitInterrupted, "interrompido pelo usuário")
 		case err := <-waited:
-			for line := range lines { // flush what is still buffered
-				fmt.Fprintln(log, line)
-				keep(line)
-				for _, ev := range stream.Parse(spec.Client, []byte(line)) {
-					res.absorb(ev)
-					if hooks.OnEvent != nil {
-						hooks.OnEvent(ev)
-					}
+			if lines != nil { // flush what is still buffered; nil means it was already drained
+				for line := range lines {
+					handle(line)
 				}
 			}
 			code = exitCode(err)
@@ -201,6 +205,9 @@ func (r *Result) absorb(ev stream.Event) {
 		r.IsError = r.IsError || ev.IsError
 	case stream.Error:
 		r.IsError = true
+		if ev.Text != "" && len(r.Errors) < maxErrors {
+			r.Errors = append(r.Errors, ev.Text)
+		}
 	}
 }
 

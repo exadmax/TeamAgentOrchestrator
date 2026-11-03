@@ -19,6 +19,7 @@ const TABS = [
 // Shared app context handed to every view.
 const ctx = {
   snap: { agents: [], clients: [], activity: [] },
+  board: { sprints: [], tasks: [] },
   tab: 'inicio',
   agent: null, // the agent selected anywhere (org chart, console, desk)
   go(tab, agent) {
@@ -54,9 +55,21 @@ function setSnap(snap) {
   const active = (snap.agents || []).filter((a) => a.status === 'ativo').length;
   status.clients.replaceChildren(h('span.dot', { style: { background: installed ? 'var(--ok)' : 'var(--err)' } }), `Conectado · ${installed} clientes CLI`);
   status.agents.replaceChildren(`Agentes: ${snap.agents?.length || 0} (${active} ativos)`);
-  const errors = (snap.agents || []).filter((a) => a.status === 'erro').length;
-  status.tasks.replaceChildren(errors ? `${errors} agente(s) com erro` : (snap.dir || ''));
+  drawTaskStatus();
   page?.update?.(snap);
+}
+
+function drawTaskStatus() {
+  const open = (ctx.board?.tasks || []).filter((t) => t.status !== 'done' && !t.archived);
+  const high = open.filter((t) => t.priority === 'high' || t.question).length;
+  const errors = (ctx.snap.agents || []).filter((a) => a.status === 'erro').length;
+  status.tasks.replaceChildren(`Tarefas: ${open.length} (${high} prioritárias)`, errors ? ` · ${errors} agente(s) com erro` : '');
+}
+
+function setBoard(board) {
+  ctx.board = board;
+  drawTaskStatus();
+  page?.board?.(board);
 }
 
 function renderPage() {
@@ -69,7 +82,8 @@ function renderPage() {
 
 // ---------------------------------------------------------------- menus
 const MENUS = [
-  ['Arquivo', [['Abrir projeto…', () => ctx.call('ChooseProject')], ['Recarregar', () => ctx.call('Snapshot')], null, ['Sair', () => window.runtime?.Quit?.()]]],
+  ['Arquivo', [['Abrir projeto…', () => ctx.call('ChooseProject').then(() => api.Board().then(setBoard))],
+    ['Recarregar', () => { ctx.call('Snapshot'); api.Board().then(setBoard); }], null, ['Sair', () => window.runtime?.Quit?.()]]],
   ['Agentes', [['Novo agente…', () => ctx.go('novo')], ['Organograma', () => ctx.go('org')], ['Console', () => ctx.go('console')], null,
     ['Procurar clientes instalados', () => ctx.call('DetectClients').then(() => toast('Clientes atualizados.'))]]],
   ['Tarefas', [['Sprints', () => ctx.go('sprints')], ['Mesa do agente', () => ctx.go('mesa')]]],
@@ -126,5 +140,8 @@ on('snapshot', setSnap);
 on('clients', (clients) => setSnap({ ...ctx.snap, clients }));
 on('line', (l) => page?.line?.(l));
 on('idle', (e) => page?.idle?.(e));
+on('board', setBoard);
 
-api.Snapshot().then((s) => { setSnap(s); renderPage(); }).catch((e) => { renderPage(); alertBox(errText(e)); });
+Promise.all([api.Snapshot(), api.Board()])
+  .then(([s, b]) => { ctx.board = b; setSnap(s); renderPage(); })
+  .catch((e) => { renderPage(); alertBox(errText(e)); });

@@ -26,6 +26,16 @@ func TestMain(m *testing.M) {
 	case "fail":
 		fmt.Fprintln(os.Stderr, "Error: 429 Too Many Requests, please retry in 2h")
 		os.Exit(1)
+	case "toolerr": // the real reviewer session that was misread as quota
+		fmt.Println(`{"type":"user","message":{"content":[{"type":"tool_result","is_error":true,"content":"File does not exist."}]}}`)
+		fmt.Println(`{"type":"rate_limit_event","rate_limit_info":{"status":"allowed","rateLimitType":"five_hour"}}`)
+		fmt.Println(`{"type":"result","subtype":"success","is_error":false,"result":"APROVADO: ok","usage":{"input_tokens":5,"output_tokens":2}}`)
+		os.Exit(0)
+	case "chatty": // keeps printing forever, like an agent stuck in a loop
+		for {
+			fmt.Println(`{"type":"item.completed","item":{"type":"agent_message","text":"de novo"}}`)
+			time.Sleep(200 * time.Millisecond)
+		}
 	case "silent":
 		fmt.Println("starting")
 		time.Sleep(20 * time.Second)
@@ -92,6 +102,24 @@ func TestRunCancel(t *testing.T) {
 func TestRunLaunchError(t *testing.T) {
 	res := Run(context.Background(), Spec{Client: "codex", Argv: []string{filepath.Join(t.TempDir(), "missing.exe")}}, Hooks{})
 	if res.Exit != ExitLaunch || res.LaunchErr == "" {
+		t.Fatalf("result = %+v", res)
+	}
+}
+
+func TestRunMaxRun(t *testing.T) {
+	spec := fake(t, "chatty")
+	spec.MaxRun = 2 * time.Second
+	res := Run(context.Background(), spec, Hooks{})
+	if res.Exit != ExitTimeout || !strings.Contains(res.Tail, "tempo máximo") {
+		t.Fatalf("result = %+v", res)
+	}
+}
+
+func TestToolErrorIsNotACLIError(t *testing.T) {
+	spec := fake(t, "toolerr")
+	spec.Client = "claude"
+	res := Run(context.Background(), spec, Hooks{})
+	if res.Exit != 0 || res.IsError || len(res.Errors) != 0 || res.Final != "APROVADO: ok" {
 		t.Fatalf("result = %+v", res)
 	}
 }

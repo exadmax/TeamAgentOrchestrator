@@ -12,9 +12,9 @@ Port em Go do `tools/orq` (Python) do JinChronicles, agora genérico para qualqu
 | Aba | O que faz |
 |---|---|
 | Início | o escritório: um computador por agente com a saída ao vivo; resumo do time e atividade recente |
-| Mesa do Agente | o agente na mesa dizendo a última mensagem; Responder, Delegar, Arquivar |
+| Mesa do Agente | o agente diz o que precisa (pergunta, revisão, proposta); Responder, Delegar, Arquivar; Quadro de Tarefas |
 | Organograma | árvore do time; propriedades, rostinho, pausar, novo subordinado, remover |
-| Sprints | marco 2 |
+| Sprints | sprints e atividades: criar à mão ou gerar com um agente, rodar, revisar em outro cliente, fechar com retro |
 | Tokens | uso por agente lido do JSON de cada cliente |
 | Novo Agente | assistente em 3 passos |
 | Clientes | CLIs encontrados na máquina, versões, atualização no npm e prompt de teste |
@@ -36,6 +36,7 @@ escolhe outra pasta; se ela não tiver `tao.json`, ganha um time inicial (Orques
 Arquiteto, Engenheiro no Codex e Revisor no OpenCode).
 
 - `tao.json`: o time (versionável).
+- `tao.tasks.json`: sprints e atividades (versionável).
 - `.tao/`: sessões, logs, relógios de cota e trocas de modelo (fora do git).
 
 Teste de ponta a ponta com um CLI de verdade (gasta um pouco de cota):
@@ -50,7 +51,7 @@ Só a interface, sem o Go (API simulada): `npm --prefix frontend run dev`.
 
 - [AGENTS.md](AGENTS.md): regras para os agentes que trabalham neste repositório
 - [docs/ARQUITETURA.md](docs/ARQUITETURA.md): pacotes, fluxo de uma sessão e formatos lidos
-- [docs/MARCOS.md](docs/MARCOS.md): M1 (atual) a M4
+- [docs/MARCOS.md](docs/MARCOS.md): M1 e M2 concluídos; M3 e M4 a seguir
 
 Os desenhos em `frontend/src/assets` vêm do protótipo feito no Claude Design para este projeto.
 As fontes Pixelify Sans e VT323 são da licença SIL Open Font License.
