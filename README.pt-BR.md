@@ -12,6 +12,14 @@ Port em Go do `tools/orq` (Python) do JinChronicles, agora genérico para qualqu
 Página do projeto, com tour pelas telas: [exadmax.github.io/TeamAgentOrchestrator](https://exadmax.github.io/TeamAgentOrchestrator/)
 (publicada pelo GitHub Pages a partir de `docs/`).
 
+## Baixar
+
+Windows 10/11 (64 bits): **[baixe o instalador](https://github.com/exadmax/TeamAgentOrchestrator/releases/latest/download/TeamAgent-amd64-installer.exe)**
+([todas as versões](https://github.com/exadmax/TeamAgentOrchestrator/releases)). Ele instala só para o seu usuário, sem
+pedir administrador. Ainda não tem assinatura digital, então o SmartScreen pode dizer *editor desconhecido*:
+*Mais informações → Executar assim mesmo*. Você ainda precisa de ao menos um cliente de agente (veja abaixo).
+Para remover: Configurações → Aplicativos → TeamAgent Orchestrator.
+
 ## Idiomas
 
 O app inteiro fala **inglês por padrão** e **português do Brasil** como opção: **Ferramentas → Idioma**.
@@ -36,7 +44,7 @@ de etapa) ficam no idioma em que foram escritos.
 Janelas do menu **Ferramentas**: *Modelos e cotas* (relógios de cota, trocas de modelo, troca automática),
 *Fluxo git* (branch por tarefa, base, prefixo) e *Idioma*. **Arquivo → Importar cartões** lê `docs/equipe/owners.json` e `docs/tasks/`.
 
-## Rodar
+## Compilar do código-fonte
 
 Requisitos: Go 1.26+, Node 20+, [Wails v3](https://wails.io) (`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0`)
 e pelo menos um cliente de agente instalado (`npm i -g @anthropic-ai/claude-code @openai/codex @opencode/cli`).
@@ -44,11 +52,12 @@ e pelo menos um cliente de agente instalado (`npm i -g @anthropic-ai/claude-code
 ```bash
 wails3 dev         # janela com recarga
 wails3 build       # bin/TeamAgent.exe
+wails3 package     # bin/TeamAgent-amd64-installer.exe (precisa do NSIS: winget install NSIS.NSIS)
 go test ./...      # testes do backend
 ```
 
-Ao abrir, o orquestrador usa o último projeto (ou a pasta atual). **Arquivo → Abrir projeto…**
-escolhe outra pasta; se ela não tiver `tao.json`, ganha um time inicial (Orquestrador e Arquiteto no Claude,
+Ao abrir, o orquestrador usa o último projeto, ou a pasta atual se ela for um projeto ou repositório git;
+senão, pede uma pasta. **Arquivo → Abrir projeto…** escolhe outra pasta; se ela não tiver `tao.json`, ganha um time inicial (Orquestrador e Arquiteto no Claude,
 Engenheiro no Codex e Revisor no OpenCode).
 
 - `tao.json`: o time (versionável).
@@ -71,6 +80,12 @@ Só a interface, sem o Go (API simulada): `npm --prefix frontend run dev` e abra
 Para inspecionar a janela de verdade sem acesso à tela, rode o app com `TAO_DEVTOOLS_PORT=9333`: o WebView2 abre
 o protocolo DevTools nessa porta (`http://127.0.0.1:9333/json`).
 
+## Releases
+
+O `.github/workflows/release.yml` testa e gera o instalador no Windows a cada pull request. Para publicar uma versão:
+mude-a em `build/config.yml` (o teste `TestVersionsMatch` lista os outros arquivos que a repetem), faça o merge e
+envie uma tag `v<versão>`; o workflow anexa o instalador a uma nova release no GitHub.
+
 ## Traduzir
 
 - Mensagens do backend: `internal/i18n/locales/<idioma>/*.json` (formatos do fmt, `%s`, `%[2]s`).
@@ -81,7 +96,11 @@ o protocolo DevTools nessa porta (`http://127.0.0.1:9333/json`).
 
 - [AGENTS.md](AGENTS.md): regras para os agentes que trabalham neste repositório (em inglês)
 - [docs/ARQUITETURA.md](docs/ARQUITETURA.md): pacotes, fluxo de uma sessão e formatos lidos ([English](docs/ARCHITECTURE.md))
-- [docs/MARCOS.md](docs/MARCOS.md): M1, M2 e M3 concluídos; M4 em andamento ([English](docs/MILESTONES.md))
+- [docs/MARCOS.md](docs/MARCOS.md): M1 a M5 concluídos (M5: instalador e releases para Windows); M6 a seguir ([English](docs/MILESTONES.md))
 
 Os desenhos em `frontend/src/assets` vêm do protótipo feito no Claude Design para este projeto.
 As fontes Pixelify Sans e VT323 são da licença SIL Open Font License.
+
+## Licença
+
+O TeamAgent Orchestrator é software livre, sob a [GNU General Public License v3.0 ou posterior](LICENSE).

@@ -12,7 +12,7 @@ import clientes from './views/clientes.js';
 import consoleView from './views/console.js';
 import { modelsWindow, gitWindow, importCards } from './views/models.js';
 
-const VERSION = 'v0.4.0';
+const VERSION = 'v0.5.0';
 const tabs = () => [
   ['inicio', tr('tab.home'), inicio], ['mesa', tr('tab.agent_desk'), mesa], ['org', tr('tab.org_chart'), org], ['sprints', tr('tab.sprints'), sprints],
   ['tokens', tr('tab.tokens'), tokens], ['novo', tr('tab.new_agent'), novo], ['clientes', tr('tab.clients'), clientes], ['console', tr('tab.console'), consoleView],
@@ -141,6 +141,16 @@ function about() {
   ]);
 }
 
+// First run (or the last project is gone): no project open, ask for a folder.
+function welcome() {
+  dialog(tr('welcome.title'), (close) => [
+    h('div.dialog-body.col', { style: { width: '380px' } }, h('b', tr('welcome.heading')), tr('welcome.text')),
+    h('div.dialog-btns',
+      h('button.btn.default', { onclick: () => { close(); ctx.call('ChooseProject').then(() => api.Board().then(setBoard)).catch(() => {}); } }, tr('welcome.open')),
+      h('button.btn', { onclick: () => close() }, tr('common.close'))),
+  ]);
+}
+
 // ---------------------------------------------------------------- window
 function buildWindow() {
   page?.destroy?.();
@@ -177,7 +187,7 @@ async function start() {
   on('models', () => ctx.call('Snapshot'));
 
   await Promise.all([api.Snapshot(), api.Board()])
-    .then(([s, b]) => { ctx.board = b; setSnap(s); renderPage(); })
+    .then(([s, b]) => { ctx.board = b; setSnap(s); renderPage(); if (!s.dir) welcome(); })
     .catch((e) => { renderPage(); alertBox(errText(e)); });
 
 }

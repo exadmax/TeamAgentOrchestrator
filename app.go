@@ -119,12 +119,11 @@ func NewApp() *App {
 
 // ServiceStartup is called by Wails before the window opens.
 func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
-	dir := lastProject()
-	if dir == "" {
-		dir, _ = os.Getwd()
-	}
-	if err := a.open(dir); err != nil {
-		log.Printf("open %s: %v", dir, err)
+	cwd, _ := os.Getwd()
+	if dir := startupDir(lastProject(), cwd); dir != "" {
+		if err := a.open(dir); err != nil {
+			log.Printf("open %s: %v", dir, err)
+		}
 	}
 	go a.DetectClients()
 	go a.watchClocks(ctx.Done())
@@ -661,6 +660,21 @@ func lastProject() string {
 	s := loadSettings()
 	if fi, err := os.Stat(s.LastProject); err == nil && fi.IsDir() {
 		return s.LastProject
+	}
+	return ""
+}
+
+// startupDir is the project opened at start: the last one, else the current folder when it already is a
+// project (tao.json) or a git repository. Any other folder (the install folder of a Start menu shortcut,
+// System32...) opens no project and the window asks for one, so no team is created where it does not belong.
+func startupDir(last, cwd string) string {
+	if last != "" {
+		return last
+	}
+	for _, mark := range []string{team.FileName, ".git"} {
+		if _, err := os.Stat(filepath.Join(cwd, mark)); err == nil && cwd != "" {
+			return cwd
+		}
 	}
 	return ""
 }

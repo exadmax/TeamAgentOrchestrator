@@ -44,7 +44,7 @@ JinChronicles; the interface runs on Wails v3.
 | `internal/importer`, git fields and merge in `internal/tasks` | Codex |
 | `app_git.go`, `app_models.go`, Wails v3 migration, screens, `docs/index.html` | Claude Code |
 
-## M4 — Distribution and internationalization (in progress)
+## M4 — Internationalization (done)
 
 **Internationalization (done):** the whole system in English by default and Brazilian Portuguese as an option
 (Tools → Language): interface, backend messages and errors, task history (stored as key + args, so it changes
@@ -52,11 +52,33 @@ language too), prompts sent to the agents, reviewer verdict in both languages, R
 with a Portuguese version, and a bilingual GitHub Pages site. Catalogs in `internal/i18n/locales/` and
 `frontend/src/i18n/`, with a test that both languages have the same keys and placeholders.
 
-**Next:** install and update clients through npm from the Clients tab, self-repair, NSIS installer,
-Linux and macOS builds.
-
 | Package | Owner in M4 (i18n) |
 |---|---|
 | `internal/*` translated, history with keys | Codex |
 | `frontend/` translated, language switch in the interface | Codex |
 | `internal/i18n`, app layer, prompts, documents, Pages | Claude Code |
+
+## M5 — Windows executable, installer and releases (done)
+
+- **Installer** (NSIS, `build/windows/nsis/project.nsi`): per-user install with no administrator prompt in
+  `%LOCALAPPDATA%\Programs\TeamAgent Orchestrator`, Start menu and desktop shortcuts, the GPL license page,
+  English and Portuguese (picked from Windows, remembered by the uninstaller), "run now" on the last page,
+  WebView2 installed when missing, upgrade in place. Installer and uninstaller wait while the app is open.
+- **Uninstaller:** removes the program, shortcuts, registry and the WebView2 cache; keeps the settings and the projects.
+- **First run:** opened from a shortcut the current folder is the install folder, so the app only opens the current
+  folder when it is a project (`tao.json`) or a git repository; otherwise a welcome window asks for one.
+- **Releases:** `.github/workflows/release.yml` tests and builds on Windows for every pull request (installer kept
+  as an artifact) and, on a `v*` tag matching `build/config.yml`, publishes a GitHub release with
+  `TeamAgent-amd64-installer.exe`. The Pages site has a Download section that points at the latest release.
+- **Version:** one number in `build/config.yml`; `TestVersionsMatch` checks the copies (exe resources, installer,
+  packages, status bar).
+- **License:** GPL-3.0-or-later (`LICENSE`).
+
+Build locally: `wails3 package` (needs NSIS: `winget install NSIS.NSIS`) writes `bin/TeamAgent-amd64-installer.exe`;
+`INSTALL_SCOPE=machine` builds a Program Files installer instead.
+
+The installer is not code-signed yet: SmartScreen shows "unknown publisher".
+
+## M6 — Next
+
+Install and update clients through npm from the Clients tab, self-repair, Linux and macOS builds, code signing.
