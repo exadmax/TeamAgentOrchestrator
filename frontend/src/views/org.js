@@ -83,5 +83,7 @@ export default function org(ctx) {
     drawProps();
   }
   draw();
+  // a wide team opens centered on the top of the chart (the tree is centered inside a wider scroll area)
+  requestAnimationFrame(() => { chart.scrollLeft = (chart.scrollWidth - chart.clientWidth) / 2; });
   return { el, update: draw };
 }

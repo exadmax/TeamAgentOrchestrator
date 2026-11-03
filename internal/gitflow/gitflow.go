@@ -56,6 +56,12 @@ func (r *Repo) DefaultBase(ctx context.Context) string {
 	if out, err := r.git(ctx, r.Dir, "symbolic-ref", "refs/remotes/origin/HEAD"); err == nil && strings.HasPrefix(out, "refs/remotes/origin/") {
 		return strings.TrimPrefix(out, "refs/remotes/origin/")
 	}
+	// no origin/HEAD: prefer the usual base names over whatever branch happens to be checked out
+	for _, name := range []string{"main", "master"} {
+		if _, err := r.git(ctx, r.Dir, "show-ref", "--verify", "--quiet", "refs/heads/"+name); err == nil {
+			return name
+		}
+	}
 	if out, err := r.git(ctx, r.Dir, "symbolic-ref", "--short", "HEAD"); err == nil && out != "" {
 		return out
 	}

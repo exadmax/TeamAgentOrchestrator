@@ -226,3 +226,10 @@ func TestEnsureStartsFromRemoteBranch(t *testing.T) {
 		t.Fatal("worktree lost the commits of origin/feature:", err)
 	}
 }
+func TestDefaultBasePrefersMainOverCurrentBranch(t *testing.T) {
+	r := repository(t)
+	command(t, r.Dir, "switch", "-c", "feature/x")
+	if got := r.DefaultBase(context.Background()); got != "main" {
+		t.Fatalf("DefaultBase = %q, want main", got)
+	}
+}

@@ -163,6 +163,7 @@ label.radio { display: inline-flex; gap: 4px; align-items: center; margin-right:
 /* ------------------------------------------------ Organograma */
 .chart { flex: 1; overflow: auto; background: #f8f4e6 radial-gradient(#cfc8b0 1px, transparent 1px) 0 0 / 14px 14px; padding: 22px; }
 .tree, .tree ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; }
+.tree { width: max-content; min-width: 100%; } /* a wide team scrolls instead of being cut on the left */
 .tree ul { padding-top: 22px; position: relative; }
 .tree li { position: relative; padding: 22px 8px 0; display: flex; flex-direction: column; align-items: center; }
 .tree > li { padding-top: 0; }
