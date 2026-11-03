@@ -1,6 +1,7 @@
+import { t as tr } from '../i18n/index.js';
 // Console: MS-DOS style prompt per agent, fed live by the CLI output.
 import { api } from '../api.js';
-import { h, dot, clientTag, hhmm } from '../ui.js';
+import { h, dot, clientTag, hhmm, modelLabel } from '../ui.js';
 
 export function termLine(l) {
   const text = l.kind === 'cmd' ? `C:\\TEAMAGENT> ${l.text}` : l.kind === 'tool' ? `» ${l.tool}${l.text ? ': ' + l.text : ''}`
@@ -12,9 +13,9 @@ export default function consoleView(ctx) {
   const list = h('div.list.sunken', { style: { width: '190px', flex: 'none' } });
   const term = h('div.term.sunken', { style: { flex: 1 } });
   const head = h('div.panel-title');
-  const input = h('input.field.grow', { placeholder: 'Enviar instrução ao agente…', onkeydown: (e) => e.key === 'Enter' && send() });
-  const sendBtn = h('button.btn', { onclick: send }, 'Enviar');
-  const stopBtn = h('button.btn', { onclick: () => api.StopAgent(ctx.agent) }, 'Parar');
+  const input = h('input.field.grow', { placeholder: tr('console.send_an_instruction_to_the_agent'), onkeydown: (e) => e.key === 'Enter' && send() });
+  const sendBtn = h('button.btn', { onclick: send }, tr('common.send'));
+  const stopBtn = h('button.btn', { onclick: () => api.StopAgent(ctx.agent) }, tr('console.stop'));
   const idle = h('div.small', { style: { color: 'var(--term-yellow)', background: '#000', padding: '0 10px' } });
   const el = h('div.page', list, h('div.panel.raised.grow', head, h('div.panel-body.col', { style: { padding: '4px' } }, term, idle,
     h('div.row', input, sendBtn, stopBtn))));
@@ -29,7 +30,7 @@ export default function consoleView(ctx) {
     list.replaceChildren(...(ctx.snap.agents || []).map((a) => h(`div.li${a.id === ctx.agent ? '.sel' : ''}`,
       { onclick: () => { ctx.agent = a.id; load(); } }, dot(a.status), h('span.grow', a.name), clientTag(a.client_name, a.client_color))));
     const a = ctx.find(ctx.agent);
-    head.replaceChildren(`MS-DOS Prompt - ${a?.name || ''}`, h('span.right', a ? `${a.client_name} · ${a.model_in_use || 'modelo padrão'}` : ''));
+    head.replaceChildren(tr('console.ms_dos_prompt', { p1: a?.name || '' }), h('span.right', a ? tr('console.client_model', { client: a.client_name, model: modelLabel(a.model_in_use) }) : ''));
     const busy = a?.status === 'ativo';
     stopBtn.disabled = !busy;
     sendBtn.disabled = busy || a?.status === 'pausado';
@@ -54,7 +55,7 @@ export default function consoleView(ctx) {
       term.scrollTop = term.scrollHeight;
     },
     idle(e) {
-      if (e.agent === ctx.agent) idle.textContent = `… aguardando resposta há ${e.seconds}s, sem saída (timeout em 300s)`;
+      if (e.agent === ctx.agent) idle.textContent = tr('console.waiting_s_for_a_response_no_output', { p1: e.seconds });
     },
   };
 }

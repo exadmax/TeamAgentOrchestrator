@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -12,6 +13,9 @@ import (
 var assets embed.FS
 
 func main() {
+	if lang := loadSettings().Lang; lang != "" {
+		_ = i18n.Set(lang) // an unknown value keeps English
+	}
 	a := NewApp()
 	var browserArgs []string
 	if port := os.Getenv("TAO_DEVTOOLS_PORT"); port != "" {
@@ -19,16 +23,16 @@ func main() {
 		browserArgs = append(browserArgs, "--remote-debugging-port="+port)
 	}
 	app := application.New(application.Options{
-		Name:        "TeamAgent Orquestrador",
-		Description: "Orquestrador de times de agentes de IA",
+		Name:        "TeamAgent Orchestrator",
+		Description: "Orchestrator for teams of AI coding agents",
 		Services:    []application.Service{application.NewService(a)},
 		Assets:      application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
 		Mac:         application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 		Windows:     application.WindowsOptions{AdditionalBrowserArgs: browserArgs},
 	})
 	a.wapp = app
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:            "TeamAgent Orquestrador",
+	a.win = app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            i18n.T("app.window_title"),
 		Width:            1280,
 		Height:           820,
 		MinWidth:         960,

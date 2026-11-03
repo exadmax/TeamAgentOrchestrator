@@ -5,7 +5,7 @@
 		<key>CFBundleExecutable</key>
 		<string>TeamAgent</string>
 		<key>CFBundleGetInfoString</key>
-		<string>TeamAgent Orquestrador</string>
+		<string>TeamAgent Orchestrator</string>
 		<key>CFBundleIconFile</key>
 		<string>icons</string>
 		<key>CFBundleIconName</key>
@@ -13,7 +13,7 @@
 		<key>CFBundleIdentifier</key>
 		<string>com.exadmax.teamagent</string>
 		<key>CFBundleName</key>
-		<string>TeamAgent Orquestrador</string>
+		<string>TeamAgent Orchestrator</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>

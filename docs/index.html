@@ -1,230 +1,113 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TeamAgent Orquestrador</title>
-<meta name="description" content="Orquestrador de times de agentes de IA com cara de Windows 95: Claude Code, Codex CLI, OpenCode e Gemini CLI trabalhando juntos, cada um pelo próprio cliente de linha de comando.">
+<title>TeamAgent Orchestrator</title>
+<meta name="description" content="An orchestrator for teams of AI coding agents with a Windows 95 look: Claude Code, Codex CLI, OpenCode and Gemini CLI working together, each through its own command-line client.">
 <link rel="icon" href="assets/av_p_robo.png">
-<style>
-@font-face { font-family: 'Pixelify Sans'; font-weight: 400 700; src: url(assets/pixelify-latin.woff2) format('woff2'); }
-@font-face { font-family: 'VT323'; src: url(assets/vt323-latin.woff2) format('woff2'); }
-:root {
-  --face: #c0c0c0; --hi: #fff; --light: #dfdfdf; --shadow: #808080; --dark: #000;
-  --navy: #000080; --navy2: #1084d0; --desk: #008080; --paper: #f4f0e2;
-  --ok: #19b33d; --warn: #e8b100; --err: #d01818;
-  --claude: #c15f3c; --codex: #1a1a1a; --opencode: #2e7d32; --gemini: #1a73e8;
-  --ui: Tahoma, 'Segoe UI', Verdana, sans-serif; --pixel: 'Pixelify Sans', Tahoma, sans-serif; --mono: VT323, 'Lucida Console', monospace;
-}
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--desk); font: 15px/1.55 var(--ui); color: #000; }
-a { color: var(--navy); }
-img { max-width: 100%; display: block; }
-code, .mono { font-family: var(--mono); font-size: 1.15em; }
-h1, h2, h3 { font-family: var(--pixel); font-weight: 700; line-height: 1.2; margin: 0 0 .5em; }
-.wrap { max-width: 1320px; margin: 0 auto; padding: 0 16px; }
-
-/* bevels */
-.raised { background: var(--face); box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--light), inset -2px -2px var(--shadow), inset 2px 2px var(--hi); }
-.sunken { box-shadow: inset 1px 1px var(--shadow), inset -1px -1px var(--hi), inset 2px 2px var(--dark), inset -2px -2px var(--light); }
-.btn { display: inline-flex; align-items: center; gap: 6px; font: 14px var(--ui); color: #000; text-decoration: none; padding: 7px 16px; border: 0; cursor: pointer; background: var(--face);
-  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--hi), inset -2px -2px var(--shadow), inset 2px 2px var(--light); }
-.btn:active, .btn.on { box-shadow: inset 1px 1px var(--dark), inset -1px -1px var(--hi), inset 2px 2px var(--shadow), inset -2px -2px var(--light); }
-.btn.default { outline: 1px solid #000; outline-offset: -1px; font-weight: bold; }
-
-/* windows */
-.win { margin: 28px 0; padding: 3px; scroll-margin-top: 52px; }
-.titlebar { display: flex; align-items: center; gap: 8px; padding: 4px 6px; color: #fff; font: bold 15px var(--pixel); background: linear-gradient(90deg, var(--navy), var(--navy2)); }
-.titlebar img { width: 20px; height: 20px; image-rendering: pixelated; }
-.titlebar .x { margin-left: auto; display: flex; gap: 2px; }
-.titlebar .x span { width: 18px; height: 16px; font: bold 11px var(--ui); color: #000; display: grid; place-items: center; }
-.win-body { padding: 18px 20px; }
-.win-body > p:first-child { margin-top: 0; }
-
-/* top bar */
-.taskbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 4px; padding: 4px 6px; overflow-x: auto; white-space: nowrap; }
-.taskbar .start { font-weight: bold; }
-.taskbar .start img { width: 18px; height: 18px; image-rendering: pixelated; }
-.taskbar a.btn { padding: 4px 10px; font-size: 13px; }
-
-/* hero */
-.hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 24px; align-items: center; }
-.hero h1 { font-size: 34px; color: var(--navy); }
-.hero .lead { font-size: 17px; }
-.hero .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-.office { position: relative; padding: 14px; background: #8f8fe0 repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,.08) 6px 12px); display: grid; gap: 12px; }
-.pc { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: end; }
-.pc img { width: 64px; height: 64px; image-rendering: pixelated; }
-.term { background: #000; color: #33ff66; font: 17px/1.15 var(--mono); padding: 8px 10px; min-height: 64px; border: 6px solid var(--paper); border-radius: 4px; }
-.term .who { color: #ffff55; }
-.cursor::after { content: '_'; animation: blink 1s steps(1) infinite; }
-@keyframes blink { 50% { opacity: 0; } }
-
-/* cards */
-.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-.card { padding: 14px 16px; }
-.card h3 { font-size: 17px; display: flex; align-items: center; gap: 8px; }
-.card h3 img { width: 26px; height: 26px; image-rendering: pixelated; }
-.card p { margin: .3em 0 0; }
-.tag { display: inline-block; color: #fff; font: bold 12px var(--ui); padding: 1px 7px; border-radius: 2px; }
-
-/* tab control (screen tour) */
-.tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 4px; position: relative; z-index: 1; }
-.tabs button { font: 14px var(--ui); background: var(--face); border: 0; padding: 6px 14px 5px; cursor: pointer; position: relative; top: 2px;
-  box-shadow: inset -1px 0 var(--dark), inset 1px 1px var(--hi), inset -2px 0 var(--shadow); }
-.tabs button.on { font-weight: bold; top: 0; padding-bottom: 9px; margin-bottom: -2px; }
-.tabpanel { padding: 16px; }
-.tabpanel .about { display: grid; grid-template-columns: 260px 1fr; gap: 6px 24px; align-items: start; margin-bottom: 14px; }
-.tabpanel .shot { padding: 3px; background: #000; }
-.tabpanel .shot a { display: block; cursor: zoom-in; }
-.tabpanel .shot img { width: 100%; height: auto; }
-.tabpanel h3 { font-size: 22px; color: var(--navy); margin: 0; }
-.tabpanel ul { padding-left: 18px; margin: 0; columns: 2; column-gap: 28px; }
-.tabpanel li { break-inside: avoid; margin-bottom: 4px; }
-.tabpanel .hint { font-size: 12px; color: #444; margin: 6px 0 0; text-align: right; }
-
-/* pipeline */
-.pipe { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 14px; }
-.pipe button { font: 13px var(--ui); border: 0; cursor: pointer; padding: 8px 12px; background: var(--face);
-  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--hi), inset -2px -2px var(--shadow), inset 2px 2px var(--light); }
-.pipe button.on { background: var(--navy); color: #fff; }
-.pipe .arrow { align-self: center; color: #555; }
-.explain { background: var(--paper); padding: 14px 16px; min-height: 120px; }
-.explain h4 { margin: 0 0 6px; font: bold 16px var(--pixel); }
-
-/* simulator */
-.sim { display: grid; grid-template-columns: 360px 1fr; gap: 16px; }
-.sim label { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; cursor: pointer; }
-.sim .out { background: #000; color: #c0c0c0; font: 19px/1.25 var(--mono); padding: 12px 14px; min-height: 190px; }
-.sim .out .g { color: #33ff66; } .sim .out .y { color: #ffff55; } .sim .out .r { color: #ff6b6b; }
-
-table { border-collapse: collapse; width: 100%; background: #fff; font-size: 14px; }
-th { background: var(--face); text-align: left; padding: 5px 8px; font-weight: bold; box-shadow: inset -1px -1px var(--shadow), inset 1px 1px var(--hi); }
-td { padding: 5px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
-.tablewrap { overflow-x: auto; }
-pre { background: #000; color: #c0c0c0; font: 18px/1.25 var(--mono); padding: 12px 14px; overflow-x: auto; margin: 8px 0; }
-pre .c { color: #808080; }
-.steps { counter-reset: s; list-style: none; padding: 0; }
-.steps li { counter-increment: s; padding-left: 38px; position: relative; margin: 10px 0; }
-.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 26px; height: 26px; display: grid; place-items: center; background: var(--navy); color: #fff; font: bold 14px var(--pixel); }
-.milestones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.ms { padding: 12px; }
-.ms b { font-family: var(--pixel); font-size: 18px; }
-.ms .st { font-size: 12px; font-weight: bold; padding: 1px 6px; color: #fff; }
-.small { font-size: 13px; }
-.muted { color: #444; }
-footer { color: #fff; text-align: center; padding: 24px 16px 40px; font-size: 13px; }
-footer a { color: #fff; }
-
-@media (max-width: 860px) {
-  .hero, .tabpanel .about, .sim { grid-template-columns: 1fr; }
-  .tabpanel ul { columns: 1; }
-  .grid3, .grid2 { grid-template-columns: 1fr; }
-  .milestones { grid-template-columns: 1fr 1fr; }
-  .hero h1 { font-size: 27px; }
-  .win-body { padding: 14px; }
-}
-</style>
+<link rel="alternate" hreflang="pt-BR" href="pt-BR/">
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
 
-<nav class="taskbar raised" aria-label="Seções">
-  <a class="btn start" href="#topo"><img src="assets/av_p_robo.png" alt="">TeamAgent</a>
-  <a class="btn" href="#o-que-e">O que é</a>
-  <a class="btn" href="#como-funciona">Como funciona</a>
-  <a class="btn" href="#telas">Telas</a>
-  <a class="btn" href="#tarefas">Tarefas e git</a>
-  <a class="btn" href="#cotas">Cotas</a>
-  <a class="btn" href="#importar">Importar</a>
-  <a class="btn" href="#instalar">Instalar</a>
-  <a class="btn" href="#marcos">Marcos</a>
+<nav class="taskbar raised" aria-label="Sections">
+  <a class="btn start" href="#top"><img src="assets/av_p_robo.png" alt="">TeamAgent</a>
+  <a class="btn" href="#what">What it is</a>
+  <a class="btn" href="#how">How it works</a>
+  <a class="btn" href="#screens">Screens</a>
+  <a class="btn" href="#tasks">Tasks and git</a>
+  <a class="btn" href="#quotas">Quotas</a>
+  <a class="btn" href="#import">Import</a>
+  <a class="btn" href="#install">Install</a>
+  <a class="btn" href="#milestones">Milestones</a>
+  <a class="btn lang" href="pt-BR/" hreflang="pt-BR" title="Ler em português">🌐 Português</a>
 </nav>
 
-<main class="wrap" id="topo">
+<main class="wrap" id="top">
 
   <!-- ============================================================ hero -->
   <section class="win raised">
-    <div class="titlebar"><img src="assets/av_p_robo.png" alt="">TeamAgent Orquestrador<div class="x"><span class="raised">_</span><span class="raised">□</span><span class="raised">✕</span></div></div>
+    <div class="titlebar"><img src="assets/av_p_robo.png" alt="">TeamAgent Orchestrator<div class="x"><span class="raised">_</span><span class="raised">□</span><span class="raised">✕</span></div></div>
     <div class="win-body hero">
       <div>
-        <h1>Um escritório de agentes de IA, com cara de Windows 95</h1>
-        <p class="lead">O <b>TeamAgent Orquestrador</b> põe Claude Code, Codex CLI, OpenCode e Gemini CLI para trabalhar <b>como um time</b>.
-          Você monta o organograma, distribui as tarefas, e cada agente trabalha pelo <b>próprio cliente de linha de comando</b>.
-          Uma tarefa feita por um agente é sempre revisada por outro, de outro cliente, e só então entra no código.</p>
-        <p>Tudo é point-and-click, como nos jogos de escritório dos anos 90: clique num computador para falar com o agente,
-          responda as perguntas dele na mesa e acompanhe a saída ao vivo.</p>
+        <h1>An office of AI agents, with a Windows 95 look</h1>
+        <p class="lead"><b>TeamAgent Orchestrator</b> puts Claude Code, Codex CLI, OpenCode and Gemini CLI to work <b>as a team</b>.
+          You build the org chart, hand out the tasks, and every agent works through <b>its own command-line client</b>.
+          A task done by one agent is always reviewed by another one, on another client, before it reaches the code.</p>
+        <p>Everything is point-and-click, like the office games of the 90s: click a computer to talk to that agent,
+          answer its questions at the desk and follow the output live.</p>
+        <p>In English (default) or Portuguese: <b>Tools → Language</b> switches the interface, the messages and even the prompts sent to the agents.</p>
         <div class="cta">
-          <a class="btn default" href="https://github.com/exadmax/TeamAgentOrchestrator">Ver no GitHub</a>
-          <a class="btn" href="#instalar">Como instalar</a>
-          <a class="btn" href="#telas">Tour pelas telas</a>
+          <a class="btn default" href="https://github.com/exadmax/TeamAgentOrchestrator">See it on GitHub</a>
+          <a class="btn" href="#install">How to install</a>
+          <a class="btn" href="#screens">Screen tour</a>
         </div>
       </div>
-      <div class="office sunken" aria-label="Exemplo: três agentes trabalhando">
-        <div class="pc"><img src="assets/av_p_robo.png" alt="Orquestrador"><div class="term"><span class="who">Orquestrador · claude</span><br>&gt; quebrando o objetivo em 4 tarefas…</div></div>
-        <div class="pc"><img src="assets/av_f2.png" alt="Engenheira"><div class="term"><span class="who">Engenheira · codex</span><br>&gt; editando src/stream.go</div></div>
-        <div class="pc"><img src="assets/av_h3.png" alt="Revisor"><div class="term"><span class="who">Revisor · claude</span><br>&gt; APROVADO<span class="cursor"></span></div></div>
+      <div class="office sunken" aria-label="Example: three agents at work">
+        <div class="pc"><img src="assets/av_p_robo.png" alt="Director"><div class="term"><span class="who">Director · claude</span><br>&gt; breaking the goal into 4 tasks…</div></div>
+        <div class="pc"><img src="assets/av_f2.png" alt="Engineer"><div class="term"><span class="who">Engineer · codex</span><br>&gt; editing src/stream.go</div></div>
+        <div class="pc"><img src="assets/av_h3.png" alt="Reviewer"><div class="term"><span class="who">Reviewer · claude</span><br>&gt; APPROVED<span class="cursor"></span></div></div>
       </div>
     </div>
   </section>
 
-  <!-- ============================================================ o que é -->
-  <section class="win raised" id="o-que-e">
-    <div class="titlebar"><img src="assets/av_e_gestao.png" alt="">O que ele faz</div>
+  <!-- ============================================================ what -->
+  <section class="win raised" id="what">
+    <div class="titlebar"><img src="assets/av_e_gestao.png" alt="">What it does</div>
     <div class="win-body">
       <div class="grid3">
         <div class="card sunken" style="background:#fff">
-          <h3><img src="assets/av_e_gestao.png" alt="">Organograma de agentes</h3>
-          <p>Cada agente tem nome, função, rostinho, emblema, <b>cliente</b> (Claude, Codex, OpenCode, Gemini), <b>modelo</b> ou nível
-            (júnior, médio, sênior) e um superior. O prompt de cada um já diz a quem ele responde e quem são os subordinados.</p>
+          <h3><img src="assets/av_e_gestao.png" alt="">An org chart of agents</h3>
+          <p>Each agent has a name, role, face, emblem, <b>client</b> (Claude, Codex, OpenCode, Gemini), <b>model</b> or tier
+            (junior, medium, senior) and a boss. Each agent's prompt already says whom it reports to and who its subordinates are.</p>
         </div>
         <div class="card sunken" style="background:#fff">
-          <h3><img src="assets/av_e_codigo.png" alt="">Cada um pelo próprio CLI</h3>
-          <p>O orquestrador não chama APIs: ele abre o <b>cliente oficial</b> de cada agente em modo não interativo, lê a saída JSON
-            linha a linha e mostra tudo na tela: texto, ferramentas usadas, tokens e erros.</p>
+          <h3><img src="assets/av_e_codigo.png" alt="">Each one through its own CLI</h3>
+          <p>The orchestrator does not call APIs: it opens each agent's <b>official client</b> in non-interactive mode, reads
+            its JSON output line by line and shows everything on screen: text, tools used, tokens and errors.</p>
         </div>
         <div class="card sunken" style="background:#fff">
-          <h3><img src="assets/av_e_revisao.png" alt="">Revisão cruzada</h3>
-          <p>Toda tarefa passa por revisão de um agente de <b>outro cliente</b>. Se o Codex fez, o Claude revisa, por exemplo.
-            O revisor responde <code>APROVADO</code> ou <code>MUDANÇAS: …</code>.</p>
+          <h3><img src="assets/av_e_revisao.png" alt="">Cross review</h3>
+          <p>Every task is reviewed by an agent on <b>another client</b>. If Codex did it, Claude reviews it, for example.
+            The reviewer answers <code>APPROVED</code> or <code>CHANGES: …</code>.</p>
         </div>
         <div class="card sunken" style="background:#fff">
-          <h3><img src="assets/av_e_planejamento.png" alt="">Sprints e tarefas</h3>
-          <p>Sprints com objetivo, progresso e retrospectiva. As tarefas são criadas à mão ou <b>geradas por um agente</b> a partir de um
-            objetivo; as geradas chegam como propostas, que você aprova.</p>
+          <h3><img src="assets/av_e_planejamento.png" alt="">Sprints and tasks</h3>
+          <p>Sprints with a goal, progress and a retro. Tasks are created by hand or <b>generated by an agent</b> from a goal;
+            generated ones arrive as proposals that you approve.</p>
         </div>
         <div class="card sunken" style="background:#fff">
-          <h3><img src="assets/av_e_codigo.png" alt="">Uma branch por tarefa</h3>
-          <p>Em projetos git, cada tarefa ganha sua branch num <b>worktree</b> separado. O agente nunca mexe na sua pasta.
-            No fim: commit, push, PR no GitHub e merge com um clique.</p>
+          <h3><img src="assets/av_e_codigo.png" alt="">One branch per task</h3>
+          <p>In git projects, each task gets its own branch in a separate <b>worktree</b>. The agent never touches your folder.
+            At the end: commit, push, a PR on GitHub and a one-click merge.</p>
         </div>
         <div class="card sunken" style="background:#fff">
-          <h3><img src="assets/av_e_gestao.png" alt="">Cotas sob controle</h3>
-          <p>Quando um modelo fica sem cota, o orquestrador anota <b>quando ele volta</b> e, com a troca automática ligada, passa a tarefa
-            para outro modelo ou para o <b>agente reserva</b>.</p>
+          <h3><img src="assets/av_e_gestao.png" alt="">Quotas under control</h3>
+          <p>When a model runs out of quota, the orchestrator notes <b>when it comes back</b> and, with automatic switching on,
+            hands the task to another model or to the <b>reserve agent</b>.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ============================================================ como funciona -->
-  <section class="win raised" id="como-funciona">
-    <div class="titlebar"><img src="assets/av_e_planejamento.png" alt="">Como funciona por dentro</div>
+  <!-- ============================================================ how -->
+  <section class="win raised" id="how">
+    <div class="titlebar"><img src="assets/av_e_planejamento.png" alt="">How it works inside</div>
     <div class="win-body">
-      <p>O app é um programa nativo (Go + <a href="https://wails.io">Wails v3</a>) com a interface em HTML. Quando um agente precisa trabalhar,
-        o orquestrador monta o comando do cliente dele, roda o processo na pasta certa e traduz cada linha de JSON para a tela.</p>
+      <p>The app is a native program (Go + <a href="https://wails.io">Wails v3</a>) with an HTML interface. When an agent has to work,
+        the orchestrator builds its client's command, runs the process in the right folder and turns each JSON line into what you see.</p>
       <div class="sunken" style="background:#fff;padding:10px;overflow-x:auto">
-        <svg viewBox="0 0 980 300" width="100%" style="min-width:640px;font-family:Tahoma,sans-serif" role="img" aria-label="Diagrama: a interface chama o app em Go, que roda os CLIs e lê o JSON deles">
+        <svg viewBox="0 0 980 300" width="100%" style="min-width:640px;font-family:Tahoma,sans-serif" role="img" aria-label="Diagram: the interface calls the Go app, which runs the CLIs and reads their JSON">
           <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#000"/></marker></defs>
-          <rect x="10" y="100" width="170" height="100" fill="#c0c0c0" stroke="#000"/><text x="95" y="135" text-anchor="middle" font-weight="bold" font-size="15">Você</text>
-          <text x="95" y="158" text-anchor="middle" font-size="13">telas Win95</text><text x="95" y="176" text-anchor="middle" font-size="13">(cliques, respostas)</text>
+          <rect x="10" y="100" width="170" height="100" fill="#c0c0c0" stroke="#000"/><text x="95" y="135" text-anchor="middle" font-weight="bold" font-size="15">You</text>
+          <text x="95" y="158" text-anchor="middle" font-size="13">Win95 screens</text><text x="95" y="176" text-anchor="middle" font-size="13">(clicks, answers)</text>
           <rect x="250" y="70" width="250" height="160" fill="#fff" stroke="#000"/><rect x="250" y="70" width="250" height="26" fill="#000080"/>
-          <text x="375" y="88" text-anchor="middle" fill="#fff" font-weight="bold" font-size="14">Orquestrador (Go)</text>
-          <text x="265" y="118" font-size="13">time e tarefas · tao.json</text><text x="265" y="140" font-size="13">fila de sessões e tempo-limite</text>
-          <text x="265" y="162" font-size="13">leitor de JSON por cliente</text><text x="265" y="184" font-size="13">falhas, cotas e trocas</text><text x="265" y="206" font-size="13">git: worktree, commit, PR</text>
-          <line x1="180" y1="135" x2="248" y2="135" stroke="#000" stroke-width="2" marker-end="url(#ar)"/><text x="214" y="127" text-anchor="middle" font-size="11">chamadas</text>
-          <line x1="248" y1="170" x2="182" y2="170" stroke="#000" stroke-width="2" marker-end="url(#ar)"/><text x="214" y="188" text-anchor="middle" font-size="11">eventos</text>
+          <text x="375" y="88" text-anchor="middle" fill="#fff" font-weight="bold" font-size="14">Orchestrator (Go)</text>
+          <text x="265" y="118" font-size="13">team and tasks · tao.json</text><text x="265" y="140" font-size="13">sessions and time limits</text>
+          <text x="265" y="162" font-size="13">JSON reader per client</text><text x="265" y="184" font-size="13">failures, quotas and swaps</text><text x="265" y="206" font-size="13">git: worktree, commit, PR</text>
+          <line x1="180" y1="135" x2="248" y2="135" stroke="#000" stroke-width="2" marker-end="url(#ar)"/><text x="214" y="127" text-anchor="middle" font-size="11">calls</text>
+          <line x1="248" y1="170" x2="182" y2="170" stroke="#000" stroke-width="2" marker-end="url(#ar)"/><text x="214" y="188" text-anchor="middle" font-size="11">events</text>
           <g font-size="13">
             <rect x="600" y="14" width="200" height="50" fill="#c15f3c"/><text x="700" y="36" text-anchor="middle" fill="#fff" font-weight="bold">Claude Code</text><text x="700" y="54" text-anchor="middle" fill="#fff" font-size="11">claude -p … stream-json</text>
             <rect x="600" y="84" width="200" height="50" fill="#1a1a1a"/><text x="700" y="106" text-anchor="middle" fill="#fff" font-weight="bold">Codex CLI</text><text x="700" y="124" text-anchor="middle" fill="#fff" font-size="11">codex exec --json</text>
@@ -235,170 +118,172 @@ footer a { color: #fff; }
           <path d="M500 140 C550 140 550 110 598 110" fill="none" stroke="#000" stroke-width="1.5" marker-end="url(#ar)"/>
           <path d="M500 160 C550 160 550 180 598 180" fill="none" stroke="#000" stroke-width="1.5" marker-end="url(#ar)"/>
           <path d="M500 170 C550 170 550 250 598 250" fill="none" stroke="#000" stroke-width="1.5" marker-end="url(#ar)"/>
-          <rect x="840" y="110" width="130" height="80" fill="#f4f0e2" stroke="#000"/><text x="905" y="140" text-anchor="middle" font-weight="bold" font-size="13">Seu projeto</text>
-          <text x="905" y="160" text-anchor="middle" font-size="11">pasta ou</text><text x="905" y="176" text-anchor="middle" font-size="11">worktree da tarefa</text>
+          <rect x="840" y="110" width="130" height="80" fill="#f4f0e2" stroke="#000"/><text x="905" y="140" text-anchor="middle" font-weight="bold" font-size="13">Your project</text>
+          <text x="905" y="160" text-anchor="middle" font-size="11">folder or the</text><text x="905" y="176" text-anchor="middle" font-size="11">task's worktree</text>
           <line x1="800" y1="150" x2="838" y2="150" stroke="#000" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ar)"/>
         </svg>
       </div>
       <div class="grid2" style="margin-top:14px">
-        <div><h3 style="font-size:16px">O que vem da saída de cada cliente</h3>
-          <ul><li><b>Texto</b> do agente, linha a linha, no Console e no computador dele.</li>
-            <li><b>Ferramentas</b> usadas (comandos, edições de arquivo).</li>
-            <li><b>Tokens</b> de entrada, saída e cache, somados na aba Tokens.</li>
-            <li><b>Erros</b>, classificados para dizer o que fazer.</li></ul></div>
-        <div><h3 style="font-size:16px">Proteções de cada sessão</h3>
-          <ul><li>Para se o agente fica <b>5 minutos em silêncio</b>.</li>
-            <li>Para depois de <b>45 minutos</b> (agente em laço).</li>
-            <li>No Windows, o processo inteiro (com os filhos) é encerrado, sem janelas de console piscando.</li>
-            <li>Log bruto de cada sessão em <code>.tao/logs/</code>.</li></ul></div>
+        <div><h3 style="font-size:16px">What comes out of each client</h3>
+          <ul><li>The agent's <b>text</b>, line by line, in the Console and on its computer.</li>
+            <li><b>Tools</b> used (commands, file edits).</li>
+            <li>Input, output and cache <b>tokens</b>, added up in the Tokens tab.</li>
+            <li><b>Errors</b>, classified to tell you what to do.</li></ul></div>
+        <div><h3 style="font-size:16px">Safeguards of every session</h3>
+          <ul><li>Stops when the agent is <b>silent for 5 minutes</b>.</li>
+            <li>Stops after <b>45 minutes</b> (an agent stuck in a loop).</li>
+            <li>On Windows the whole process tree is ended, and no console windows flash.</li>
+            <li>Raw log of every session in <code>.tao/logs/</code>.</li></ul></div>
       </div>
     </div>
   </section>
 
-  <!-- ============================================================ telas -->
-  <section class="win raised" id="telas">
-    <div class="titlebar"><img src="assets/av_p_robo.png" alt="">Tour pelas telas</div>
+  <!-- ============================================================ screens -->
+  <section class="win raised" id="screens">
+    <div class="titlebar"><img src="assets/av_p_robo.png" alt="">Screen tour</div>
     <div class="win-body" style="padding-bottom:22px">
-      <p>Clique nas abas para ver cada tela do app. As imagens usam os dados de demonstração da interface.</p>
+      <p>Click the tabs to see each screen of the app. The pictures use the interface's demo data.</p>
       <div class="tabs" role="tablist" id="tabs"></div>
       <div class="raised tabpanel" id="tabpanel" role="tabpanel"></div>
     </div>
   </section>
 
-  <!-- ============================================================ tarefas -->
-  <section class="win raised" id="tarefas">
-    <div class="titlebar"><img src="assets/av_e_planejamento.png" alt="">A vida de uma tarefa (com git)</div>
+  <!-- ============================================================ tasks -->
+  <section class="win raised" id="tasks">
+    <div class="titlebar"><img src="assets/av_e_planejamento.png" alt="">The life of a task (with git)</div>
     <div class="win-body">
-      <p>Clique em cada etapa. Em projetos que não são repositórios git, as etapas de commit, PR e merge são puladas: a tarefa termina na aprovação.</p>
+      <p>Click each step. In projects that are not git repositories, the commit, PR and merge steps are skipped: the task ends at the approval.</p>
       <div class="pipe" id="pipe"></div>
       <div class="explain sunken" id="explain"></div>
-      <h3 style="font-size:16px;margin-top:18px">Quando algo sai do caminho</h3>
+      <h3 style="font-size:16px;margin-top:18px">When something goes off track</h3>
       <div class="grid3">
-        <div class="card sunken" style="background:#fff"><b>O agente perguntou algo</b><p>Se a última linha dele é uma pergunta, a tarefa fica <b>bloqueada</b> e aparece na Mesa. Você responde e ela volta para o mesmo agente, com a pergunta e a resposta no prompt.</p></div>
-        <div class="card sunken" style="background:#fff"><b>A revisão pediu mudanças</b><p>A tarefa volta para "fazendo" no mesmo worktree, com o parecer no histórico. O agente corrige e ela volta para revisão.</p></div>
-        <div class="card sunken" style="background:#fff"><b>Delegar ou arquivar</b><p>Da Mesa você passa a tarefa para outro agente (com uma observação) ou arquiva. Uma tarefa concluída pode ser reaberta com um motivo.</p></div>
+        <div class="card sunken" style="background:#fff"><b>The agent asked something</b><p>If its last line is a question, the task is <b>blocked</b> and shows up at the Desk. You answer and it goes back to the same agent, with the question and the answer in the prompt.</p></div>
+        <div class="card sunken" style="background:#fff"><b>The review asked for changes</b><p>The task goes back to "in progress" in the same worktree, with the verdict in its history. The agent fixes it and it returns to review.</p></div>
+        <div class="card sunken" style="background:#fff"><b>Delegate or archive</b><p>From the Desk you hand the task to another agent (with a note) or archive it. A finished task can be reopened with a reason.</p></div>
       </div>
     </div>
   </section>
 
-  <!-- ============================================================ cotas -->
-  <section class="win raised" id="cotas">
-    <div class="titlebar"><img src="assets/av_e_gestao.png" alt="">Cotas, troca de modelo e agente reserva</div>
+  <!-- ============================================================ quotas -->
+  <section class="win raised" id="quotas">
+    <div class="titlebar"><img src="assets/av_e_gestao.png" alt="">Quotas, model switching and the reserve agent</div>
     <div class="win-body">
-      <p>Planos gratuitos e assinaturas acabam. Quando um cliente diz "sem cota", o orquestrador lê <b>quando ela volta</b>
-        (ou estima) e cria um <b>relógio</b>. A barra de status mostra quantos modelos estão em espera, e
-        <b>Ferramentas → Modelos e cotas</b> mostra a contagem regressiva de cada um.</p>
+      <p>Free plans and subscriptions run out. When a client says "out of quota", the orchestrator reads <b>when it comes back</b>
+        (or estimates it) and starts a <b>clock</b>. The status bar shows how many models are waiting, and
+        <b>Tools → Models and quotas</b> shows each countdown.</p>
       <div class="sim">
         <div class="raised" style="padding:12px">
-          <b>Simule uma tarefa do Engenheiro (Codex, gpt-6.1-sol)</b>
-          <label><input type="checkbox" id="s-auto" checked> Troca automática ligada</label>
-          <label><input type="checkbox" id="s-model"> gpt-6.1-sol sem cota</label>
-          <label><input type="checkbox" id="s-all"> todos os modelos do Codex sem cota</label>
-          <label><input type="checkbox" id="s-reserve" checked> Engenheiro tem reserva: Arquiteto (Claude)</label>
-          <label><input type="checkbox" id="s-swap"> Troca manual: Codex → gpt-6-astra nesta tarefa</label>
+          <b>Simulate a task of the Engineer (Codex, gpt-6.1-sol)</b>
+          <label><input type="checkbox" id="s-auto" checked> Automatic switching on</label>
+          <label><input type="checkbox" id="s-model"> gpt-6.1-sol out of quota</label>
+          <label><input type="checkbox" id="s-all"> every Codex model out of quota</label>
+          <label><input type="checkbox" id="s-reserve" checked> The Engineer has a reserve: Architect (Claude)</label>
+          <label><input type="checkbox" id="s-swap"> Manual swap: Codex → gpt-6-astra for this task</label>
         </div>
         <div class="out sunken" id="s-out" aria-live="polite"></div>
       </div>
-      <h3 style="font-size:16px;margin-top:18px">Falhas que o orquestrador reconhece</h3>
+      <h3 style="font-size:16px;margin-top:18px">Failures the orchestrator recognizes</h3>
       <div class="tablewrap"><table>
-        <tr><th>Tipo</th><th>Exemplo</th><th>O que acontece</th></tr>
-        <tr><td><b>cota</b></td><td>"usage limit reached, try again at 15:40"</td><td>Relógio até a volta; troca automática, se ligada.</td></tr>
-        <tr><td><b>modelo</b></td><td>modelo inexistente ou aposentado</td><td>Fica fora por 1 dia; a troca escolhe outro.</td></tr>
-        <tr><td><b>transitório</b></td><td>"overloaded", "at capacity", 502/503</td><td>Avisa que é temporário; uma espera longa informada vira relógio.</td></tr>
-        <tr><td><b>autenticação</b></td><td>login expirado, pasta não confiável</td><td>Pede para entrar de novo no cliente ou marcar a pasta como confiável.</td></tr>
-        <tr><td><b>contexto</b></td><td>conversa grande demais</td><td>Sugere uma instrução menor ou dividir a tarefa.</td></tr>
-        <tr><td><b>recusa</b></td><td>o modelo se negou</td><td>Sugere reescrever com mais contexto ou trocar de modelo.</td></tr>
-        <tr><td><b>lançamento</b></td><td>cliente não instalado</td><td>Pede para instalar o cliente ou conferir o PATH (aba Clientes).</td></tr>
-        <tr><td><b>tempo</b></td><td>5 min em silêncio ou 45 min no total</td><td>Encerra o processo e libera o agente.</td></tr>
+        <tr><th>Kind</th><th>Example</th><th>What happens</th></tr>
+        <tr><td><b>quota</b></td><td>"usage limit reached, try again at 15:40"</td><td>A clock until it is back; automatic switch, when on.</td></tr>
+        <tr><td><b>model</b></td><td>model does not exist or was retired</td><td>Kept off for a day; the switch picks another one.</td></tr>
+        <tr><td><b>transient</b></td><td>"overloaded", "at capacity", 502/503</td><td>Says it is temporary; a long reported wait becomes a clock.</td></tr>
+        <tr><td><b>auth</b></td><td>expired login, untrusted folder</td><td>Asks you to log in to the client again or trust the folder.</td></tr>
+        <tr><td><b>context</b></td><td>conversation too large</td><td>Suggests a smaller instruction or splitting the task.</td></tr>
+        <tr><td><b>refusal</b></td><td>the model declined</td><td>Suggests rewriting with more context or switching models.</td></tr>
+        <tr><td><b>launch</b></td><td>client not installed</td><td>Asks you to install the client or check the PATH (Clients tab).</td></tr>
+        <tr><td><b>timeout</b></td><td>5 min of silence or 45 min in total</td><td>Ends the process and frees the agent.</td></tr>
       </table></div>
     </div>
   </section>
 
-  <!-- ============================================================ importar -->
-  <section class="win raised" id="importar">
-    <div class="titlebar"><img src="assets/av_e_codigo.png" alt="">Importar um projeto de cartões (ex.: JinChronicles)</div>
+  <!-- ============================================================ import -->
+  <section class="win raised" id="import">
+    <div class="titlebar"><img src="assets/av_e_codigo.png" alt="">Import a cards project (e.g. JinChronicles)</div>
     <div class="win-body">
-      <p>O TeamAgent nasceu do <code>orq</code> em Python do jogo <b>JinChronicles</b>, que organiza o time em
-        <code>docs/equipe/owners.json</code> (papéis, ferramentas, modelos) e as tarefas em cartões <code>docs/tasks/T###.md</code>.
-        Abra a pasta de um projeto assim e use <b>Arquivo → Importar cartões (owners.json)</b>:</p>
+      <p>TeamAgent was born from the Python <code>orq</code> of the game <b>JinChronicles</b>, which organizes its team in
+        <code>docs/equipe/owners.json</code> (roles, tools, models) and its tasks in cards <code>docs/tasks/T###.md</code>.
+        Open the folder of such a project and use <b>File → Import cards (owners.json)</b>:</p>
       <div class="grid2">
         <ul>
-          <li>Cada <b>papel</b> vira um agente, com cliente, nível (barato → júnior, médio, forte → sênior), emblema e as leituras obrigatórias nas instruções.</li>
-          <li>O produtor fica no topo do organograma, e os demais respondem a ele.</li>
+          <li>Each <b>role</b> becomes an agent, with its client, tier (cheap → junior, medium, strong → senior), emblem and required reading in its instructions.</li>
+          <li>The producer goes to the top of the org chart and the others report to it.</li>
         </ul>
         <ul>
-          <li>Cada <b>cartão</b> vira uma tarefa, com status, critério de pronto, revisor, pergunta pendente, pareceres e branch.</li>
-          <li>As sprints citadas viram sprints (a mais recente com trabalho aberto fica ativa).</li>
-          <li>Uma branch que só existe no GitHub é retomada de lá, sem perder commits.</li>
+          <li>Each <b>card</b> becomes a task, with status, done criterion, reviewer, pending question, verdicts and branch.</li>
+          <li>The sprints mentioned become sprints (the latest one with open work is active).</li>
+          <li>A branch that exists only on GitHub is picked up from there, keeping its commits.</li>
         </ul>
       </div>
-      <p class="small muted">A importação é de mão única: os cartões originais não são alterados.</p>
+      <p class="small muted">The import is one-way: the original cards are not changed.</p>
     </div>
   </section>
 
-  <!-- ============================================================ instalar -->
-  <section class="win raised" id="instalar">
-    <div class="titlebar"><img src="assets/av_e_codigo.png" alt="">Instalar e rodar</div>
+  <!-- ============================================================ install -->
+  <section class="win raised" id="install">
+    <div class="titlebar"><img src="assets/av_e_codigo.png" alt="">Install and run</div>
     <div class="win-body">
       <ol class="steps">
-        <li><b>Requisitos:</b> Go 1.26+, Node 20+ e o CLI do Wails v3.
+        <li><b>Requirements:</b> Go 1.26+, Node 20+ and the Wails v3 CLI.
           <pre>go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0</pre></li>
-        <li><b>Pelo menos um cliente de agente</b>, já com login feito:
+        <li><b>At least one agent client</b>, already logged in:
           <pre>npm i -g @anthropic-ai/claude-code @openai/codex @opencode/cli @google/gemini-cli</pre></li>
-        <li><b>Rodar ou gerar o executável:</b>
+        <li><b>Run it or build the executable:</b>
           <pre>git clone https://github.com/exadmax/TeamAgentOrchestrator
 cd TeamAgentOrchestrator
-wails3 dev      <span class="c"># janela com recarga automática</span>
-wails3 build    <span class="c"># gera bin/TeamAgent.exe</span>
-go test ./...   <span class="c"># testes do backend</span></pre></li>
-        <li><b>Abrir um projeto:</b> Arquivo → Abrir projeto. Se a pasta não tiver <code>tao.json</code>, ela ganha um time inicial
-          (Orquestrador e Arquiteto no Claude, Engenheiro no Codex, Revisor no OpenCode), que você muda no Organograma.</li>
+wails3 dev      <span class="c"># window with hot reload</span>
+wails3 build    <span class="c"># builds bin/TeamAgent.exe</span>
+go test ./...   <span class="c"># backend tests</span></pre></li>
+        <li><b>Open a project:</b> File → Open project. If the folder has no <code>tao.json</code>, it gets a starter team
+          (Orchestrator and Architect on Claude, Engineer on Codex, QA Reviewer on OpenCode), which you change in the Org Chart.</li>
+        <li><b>Pick the language:</b> Tools → Language. English is the default; Portuguese (Brazil) is one click away.</li>
       </ol>
-      <h3 style="font-size:16px">Onde ficam os dados</h3>
+      <h3 style="font-size:16px">Where the data lives</h3>
       <div class="tablewrap"><table>
-        <tr><th>Arquivo</th><th>O que guarda</th><th>Vai para o git?</th></tr>
-        <tr><td><code>tao.json</code></td><td>o time (agentes, clientes, modelos, reservas) e o fluxo git</td><td>sim</td></tr>
-        <tr><td><code>tao.tasks.json</code></td><td>sprints e tarefas, com histórico</td><td>sim</td></tr>
-        <tr><td><code>.tao/</code></td><td>sessões, logs, relógios de cota, trocas de modelo, etapas e worktrees</td><td>não (ignorado sozinho)</td></tr>
+        <tr><th>File</th><th>What it keeps</th><th>In git?</th></tr>
+        <tr><td><code>tao.json</code></td><td>the team (agents, clients, models, reserves) and the git flow</td><td>yes</td></tr>
+        <tr><td><code>tao.tasks.json</code></td><td>sprints and tasks, with history</td><td>yes</td></tr>
+        <tr><td><code>.tao/</code></td><td>sessions, logs, quota clocks, model swaps, steps and worktrees</td><td>no (ignored by itself)</td></tr>
+        <tr><td><code>%APPDATA%\TeamAgentOrchestrator\settings.json</code></td><td>last project and language</td><td>no (your machine)</td></tr>
       </table></div>
     </div>
   </section>
 
-  <!-- ============================================================ marcos -->
-  <section class="win raised" id="marcos">
-    <div class="titlebar"><img src="assets/av_e_planejamento.png" alt="">Marcos do projeto</div>
+  <!-- ============================================================ milestones -->
+  <section class="win raised" id="milestones">
+    <div class="titlebar"><img src="assets/av_e_planejamento.png" alt="">Project milestones</div>
     <div class="win-body">
       <div class="milestones">
-        <div class="ms sunken" style="background:#fff"><b>M1</b> <span class="st" style="background:var(--ok)">pronto</span><p class="small">Núcleo em Go, janela Win95, organograma, Console com saída ao vivo, Tokens, Clientes.</p></div>
-        <div class="ms sunken" style="background:#fff"><b>M2</b> <span class="st" style="background:var(--ok)">pronto</span><p class="small">Sprints e tarefas, geração por agente, revisão em outro cliente, Mesa do Agente.</p></div>
-        <div class="ms sunken" style="background:#fff"><b>M3</b> <span class="st" style="background:var(--ok)">pronto</span><p class="small">Branch e PR por tarefa, merge, troca de modelo, agente reserva, importador de cartões, Wails v3.</p></div>
-        <div class="ms sunken" style="background:#fff"><b>M4</b> <span class="st" style="background:var(--shadow)">a seguir</span><p class="small">Instalar e atualizar os clientes pela aba Clientes, instalador, builds para Linux e macOS.</p></div>
+        <div class="ms sunken" style="background:#fff"><b>M1</b> <span class="st" style="background:var(--ok)">done</span><p class="small">Go core, Win95 window, org chart, Console with live output, Tokens, Clients.</p></div>
+        <div class="ms sunken" style="background:#fff"><b>M2</b> <span class="st" style="background:var(--ok)">done</span><p class="small">Sprints and tasks, generation by an agent, review on another client, Agent Desk.</p></div>
+        <div class="ms sunken" style="background:#fff"><b>M3</b> <span class="st" style="background:var(--ok)">done</span><p class="small">Branch and PR per task, merge, model switching, reserve agent, card importer, Wails v3.</p></div>
+        <div class="ms sunken" style="background:#fff"><b>M4</b> <span class="st" style="background:var(--warn)">in progress</span><p class="small">Internationalization done (English and Portuguese). Next: install and update the clients from the Clients tab, installer, Linux and macOS builds.</p></div>
       </div>
-      <p class="small muted" style="margin-top:14px">Construído a várias mãos: o próprio Claude Code coordenou, e partes do código foram escritas pelo Codex e pelo OpenCode,
-        o mesmo tipo de time que o orquestrador organiza.</p>
+      <p class="small muted" style="margin-top:14px">Built by many hands: Claude Code coordinated, and parts of the code were written by Codex and OpenCode,
+        the same kind of team the orchestrator organizes.</p>
     </div>
   </section>
 </main>
 
 <footer>
-  TeamAgent Orquestrador · <a href="https://github.com/exadmax/TeamAgentOrchestrator">github.com/exadmax/TeamAgentOrchestrator</a><br>
-  Desenhos do protótipo feito no Claude Design · fontes Pixelify Sans e VT323 (SIL Open Font License)
+  TeamAgent Orchestrator · <a href="https://github.com/exadmax/TeamAgentOrchestrator">github.com/exadmax/TeamAgentOrchestrator</a><br>
+  Drawings from the prototype made in Claude Design · Pixelify Sans and VT323 fonts (SIL Open Font License)
 </footer>
 
 <script>
 // ---------------------------------------------------------------- screen tour
 const SCREENS = [
-  ['inicio', 'Início', 'O escritório', ['Um computador por agente, com a última linha que ele escreveu, ao vivo.', 'Clique num computador para falar com aquele agente.', 'À direita: progresso da sprint ativa, resumo do time e atividade recente.']],
-  ['mesa', 'Mesa do Agente', 'O agente diz o que precisa', ['Mostra a pergunta, a revisão pendente ou a proposta mais urgente.', '<b>Responder</b>, <b>Delegar</b> e <b>Arquivar</b> agem sobre a tarefa escolhida.', 'O Quadro de Tarefas separa Prioridade Alta, Suporte, Follow-up, Análise e Nova Tarefa.']],
-  ['organograma', 'Organograma', 'Quem responde a quem', ['Árvore do time com cliente, modelo e status de cada agente.', 'Propriedades: nome, função, cliente, nível, modelo, superior, <b>reserva</b>, emblema e instruções.', 'Pausar, trocar o rostinho, criar subordinado e remover.']],
-  ['sprints', 'Sprints', 'Sprints e atividades', ['Criar, iniciar e fechar sprints com retrospectiva; o que sobrou passa para outra.', 'Atividades à mão ou <b>geradas por um agente</b> a partir de um objetivo.', 'A coluna Origem diz se veio de você, de um agente ou de um cartão importado.']],
-  ['tarefa', 'Tarefa', 'Os detalhes de uma tarefa', ['Etapas com ✓ ✗ ? e quantas tentativas: começar, trabalho, commit, PR, revisão, parecer, merge.', 'Branch, link do PR e "aprovada, falta o merge".', 'Botões mudam conforme o estado: Aprovar, Rodar agora, Revisar, Fazer merge, Responder, Delegar, Reabrir.']],
-  ['console', 'Console', 'Prompt estilo MS-DOS', ['Mande uma instrução livre para qualquer agente.', 'Veja o comando exato que foi rodado e cada evento da saída.', 'Botão para parar a sessão.']],
-  ['tokens', 'Tokens', 'Quem gastou o quê', ['Uso por agente lido do JSON de cada cliente: entrada, saída, cache e custo quando informado.', 'Filtro por dia e participação de cada agente.']],
-  ['clientes', 'Clientes', 'Os CLIs da máquina', ['Detecta Claude Code, Codex, OpenCode e Gemini instalados, com versão.', 'Compara com a última versão no npm.', 'Prompt de teste para conferir login e modelo.']],
-  ['novo-agente', 'Novo Agente', 'Assistente em 3 passos', ['Nome, função e rostinho.', 'Cliente e modelo (ou nível).', 'Superior no organograma e instruções.']],
-  ['modelos', 'Modelos e cotas', 'Ferramentas → Modelos e cotas', ['Relógios de cada modelo sem cota, com contagem regressiva e "Já voltou".', 'Trocas de modelo por cliente ou por tarefa, por um tempo ou até remover.', 'Liga e desliga a troca automática.']],
-  ['fluxo-git', 'Fluxo git', 'Ferramentas → Fluxo git', ['Liga a branch por tarefa (worktrees em <code>.tao/worktrees/</code>).', 'Escolhe a branch base e o prefixo das branches.', 'Mostra se há origin e o <code>gh</code> para abrir PRs.']],
+  ['inicio', 'Home', 'The office', ['One computer per agent, with the last line it wrote, live.', 'Click a computer to talk to that agent.', 'On the right: progress of the active sprint, team summary and recent activity.']],
+  ['mesa', 'Agent Desk', 'The agent says what it needs', ['Shows the most urgent question, pending review or proposal.', '<b>Reply</b>, <b>Delegate</b> and <b>Archive</b> act on the chosen task.', 'The Task Board splits High Priority, Support, Follow-up, Analysis and New Task.']],
+  ['organograma', 'Org Chart', 'Who reports to whom', ['The team tree with each agent\'s client, model and status.', 'Properties: name, role, client, tier, model, boss, <b>reserve</b>, emblem and instructions.', 'Pause, change the face, add a subordinate and remove.']],
+  ['sprints', 'Sprints', 'Sprints and tasks', ['Create, start and close sprints with a retro; what is left moves to another one.', 'Tasks by hand or <b>generated by an agent</b> from a goal.', 'The Origin column says whether it came from you, an agent or an imported card.']],
+  ['tarefa', 'Task', 'A task in detail', ['Steps with ✓ ✗ ? and how many attempts: start, work, commit, PR, review, verdict, merge.', 'Branch, PR link and "approved, merge pending".', 'The buttons follow the state: Approve, Run now, Review, Merge, Reply, Delegate, Reopen.']],
+  ['console', 'Console', 'An MS-DOS style prompt', ['Send a free instruction to any agent.', 'See the exact command that ran and every event of the output.', 'A button to stop the session.']],
+  ['tokens', 'Tokens', 'Who spent what', ['Usage per agent read from each client\'s JSON: input, output, cache and cost when reported.', 'Filter by day and each agent\'s share.']],
+  ['clientes', 'Clients', 'The CLIs on the machine', ['Detects Claude Code, Codex, OpenCode and Gemini, with their versions.', 'Compares with the latest version on npm.', 'A test prompt to check the login and the model.']],
+  ['novo-agente', 'New Agent', 'A 3-step wizard', ['Name, role and face.', 'Client and model (or tier).', 'Boss in the org chart and instructions.']],
+  ['modelos', 'Models and quotas', 'Tools → Models and quotas', ['A clock for each model out of quota, with a countdown and "It is back".', 'Model swaps per client or per task, for a while or until removed.', 'Turns automatic switching on and off.']],
+  ['fluxo-git', 'Git flow', 'Tools → Git flow', ['Turns on the branch per task (worktrees in <code>.tao/worktrees/</code>).', 'Chooses the base branch and the branch prefix.', 'Shows whether there is an origin and <code>gh</code> to open PRs.']],
 ];
 const tabs = document.getElementById('tabs');
 const panel = document.getElementById('tabpanel');
@@ -406,8 +291,8 @@ function show(i) {
   const [img, , title, items] = SCREENS[i];
   [...tabs.children].forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i); });
   panel.innerHTML = `<div class="about"><h3>${title}</h3><ul>${items.map((x) => `<li>${x}</li>`).join('')}</ul></div>
-    <div class="shot sunken"><a href="img/${img}.png" target="_blank" rel="noopener"><img src="img/${img}.png" alt="Tela ${title}" width="1280" height="820"></a></div>
-    <p class="hint">Clique na imagem para abrir no tamanho real.</p>`;
+    <div class="shot sunken"><a href="img/en/${img}.png" target="_blank" rel="noopener"><img src="img/en/${img}.png" alt="Screen: ${title}" width="1280" height="820"></a></div>
+    <p class="hint">Click the picture to open it at full size.</p>`;
 }
 SCREENS.forEach(([, label], i) => {
   const b = document.createElement('button');
@@ -418,14 +303,14 @@ show(0);
 
 // ---------------------------------------------------------------- task pipeline
 const PHASES = [
-  ['Proposta', 'Uma tarefa pode nascer de você (já "a fazer") ou de um agente: em <b>Gerar com Agente</b>, ele quebra um objetivo em 3 a 8 atividades e indica o responsável. Essas chegam como <b>propostas</b> e só andam depois que você aprova.'],
-  ['Começar', 'Ao clicar <b>Rodar agora</b>, o orquestrador cria a branch <code>tao/T001-titulo-curto</code> e um <b>worktree</b> em <code>.tao/worktrees/T001</code>. É uma cópia de trabalho separada: sua pasta e sua branch atual não mudam. A pasta <code>.tao/</code> é ignorada pelo git sozinha.'],
-  ['Trabalho', 'O responsável roda no próprio cliente, dentro do worktree. O prompt leva quem ele é no organograma, o título, o critério de pronto, o resultado anterior, o histórico recente e a sua resposta, se houver. Se o modelo estiver sem cota, entra a troca automática.'],
-  ['Commit', 'Quando o agente termina, o orquestrador faz o commit de tudo o que mudou no worktree com a mensagem <code>T001: título</code> e o resumo do agente. Se nada mudou, isso fica registrado.'],
-  ['PR', 'Com um <code>origin</code> no GitHub e o <code>gh</code> instalado, a branch é enviada e o PR é aberto (ou reaproveitado), com o critério de pronto e o resumo no corpo. Sem eles, esta etapa é pulada e o merge será local.'],
-  ['Revisão', 'Um agente de <b>outro cliente</b> revisa: o revisor escolhido na tarefa ou, sem ele, um agente ativo com emblema de revisão. Ele trabalha no mesmo worktree e recebe o <code>git diff --stat</code> da branch. Se o trabalho foi feito pela reserva, o revisor é de um cliente diferente do dela.'],
-  ['Parecer', 'O revisor termina com <code>APROVADO</code> ou <code>MUDANÇAS: o que mudar</code>. Mudanças devolvem a tarefa ao responsável; aprovação deixa a tarefa como <b>aprovada, falta o merge</b>. Um parecer confuso vira uma pergunta para você.'],
-  ['Merge', 'Com <b>Fazer merge</b> (na tarefa ou pela Mesa): se há PR, o merge é feito no GitHub; senão, é local, com <code>--no-ff</code> e push da base. Depois o worktree e a branch são apagados e a tarefa fica <b>concluída</b>.'],
+  ['Proposal', 'A task can come from you (already "ready") or from an agent: with <b>Generate with Agent</b>, it breaks a goal into 3 to 8 tasks and suggests the assignee. Those arrive as <b>proposals</b> and only move after you approve them.'],
+  ['Start', 'When you click <b>Run now</b>, the orchestrator creates the branch <code>tao/T001-short-title</code> and a <b>worktree</b> in <code>.tao/worktrees/T001</code>. It is a separate working copy: your folder and your current branch do not change. The <code>.tao/</code> folder is ignored by git on its own.'],
+  ['Work', 'The assignee runs on its own client, inside the worktree. The prompt carries who it is in the org chart, the title, the done criterion, the previous result, the recent history and your answer, if any. If the model is out of quota, automatic switching steps in.'],
+  ['Commit', 'When the agent finishes, the orchestrator commits everything that changed in the worktree with the message <code>T001: title</code> and the agent\'s summary. If nothing changed, that is noted.'],
+  ['PR', 'With an <code>origin</code> on GitHub and <code>gh</code> installed, the branch is pushed and the PR opened (or reused), with the done criterion and the summary in its body. Without them this step is skipped and the merge will be local.'],
+  ['Review', 'An agent on <b>another client</b> reviews: the reviewer chosen in the task or, without one, an active agent with the review emblem. It works in the same worktree and gets the branch\'s <code>git diff --stat</code>. If the reserve did the work, the reviewer is on a client different from the reserve\'s.'],
+  ['Verdict', 'The reviewer ends with <code>APPROVED</code> or <code>CHANGES: what to change</code> (or the Portuguese <code>APROVADO</code> / <code>MUDANÇAS</code>). Changes send the task back to the assignee; approval leaves it <b>approved, merge pending</b>. An unclear verdict becomes a question for you.'],
+  ['Merge', 'With <b>Merge</b> (in the task or from the Desk): if there is a PR, the merge happens on GitHub; otherwise it is local, with <code>--no-ff</code> and a push of the base. Then the worktree and the branch are deleted and the task is <b>done</b>.'],
 ];
 const pipe = document.getElementById('pipe');
 const explain = document.getElementById('explain');
@@ -447,21 +332,21 @@ function simulate() {
   const auto = $('s-auto').checked, all = $('s-all').checked, reserve = $('s-reserve').checked, swap = $('s-swap').checked;
   const modelOut = $('s-model').checked || all;
   const L = [];
-  let model = swap ? 'gpt-6-astra' : 'gpt-6.1-sol';
-  L.push(`<span class="y">C:\\TAO&gt;</span> rodar T007 (Engenheiro)`);
-  if (swap) L.push('troca manual da tarefa: codex usa gpt-6-astra');
+  const model = swap ? 'gpt-6-astra' : 'gpt-6.1-sol';
+  L.push('<span class="y">C:\\TAO&gt;</span> run T007 (Engineer)');
+  if (swap) L.push('manual swap for the task: codex uses gpt-6-astra');
   const clocked = all || (modelOut && model === 'gpt-6.1-sol');
   if (!clocked) {
-    L.push(`<span class="g">codex/${model}: com cota</span>`, `&gt; codex exec -m ${model} …`, '<span class="g">sessão iniciada no worktree T007</span>');
+    L.push(`<span class="g">codex/${model}: quota ok</span>`, `&gt; codex exec -m ${model} …`, '<span class="g">session started in worktree T007</span>');
   } else if (!auto) {
-    L.push(`<span class="r">codex/${model} sem cota até 15:40</span>`, 'troque o modelo ou ligue a troca automática', '<span class="r">a tarefa não começa</span>');
+    L.push(`<span class="r">codex/${model} out of quota until 15:40</span>`, 'switch the model or turn on automatic switching', '<span class="r">the task does not start</span>');
   } else if (!all) {
     const next = model === 'gpt-6-astra' ? 'gpt-6-luna' : 'gpt-6-astra';
-    L.push(`<span class="y">codex/${model} sem cota até 15:40</span>`, `usando ${next} (outro modelo do mesmo cliente)`, `&gt; codex exec -m ${next} …`, '<span class="g">sessão iniciada</span>');
+    L.push(`<span class="y">codex/${model} out of quota until 15:40</span>`, `using ${next} (another model of the same client)`, `&gt; codex exec -m ${next} …`, '<span class="g">session started</span>');
   } else if (reserve) {
-    L.push('<span class="y">todos os modelos do codex sem cota</span>', 'usando a reserva: Arquiteto (claude/sonnet)', '&gt; claude -p … --model sonnet', '<span class="g">sessão iniciada</span>', 'a revisão irá para um cliente diferente do claude');
+    L.push('<span class="y">every codex model is out of quota</span>', 'using the reserve: Architect (claude/sonnet)', '&gt; claude -p … --model sonnet', '<span class="g">session started</span>', 'the review will go to a client other than claude');
   } else {
-    L.push('<span class="r">codex sem cota e sem reserva livre</span>', 'a tarefa fica parada com a explicação no histórico', 'o relógio avisa quando a cota voltar');
+    L.push('<span class="r">codex out of quota and no free reserve</span>', 'the task waits, with the reason in its history', 'the clock tells you when the quota is back');
   }
   $('s-out').innerHTML = L.join('<br>');
 }

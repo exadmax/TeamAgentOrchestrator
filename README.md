@@ -1,70 +1,87 @@
-# TeamAgent Orquestrador
+# TeamAgent Orchestrator
 
-Orquestrador de times de agentes de IA com cara de Windows 95. Você monta o organograma
-(quem responde a quem, qual cliente e qual modelo cada agente usa), manda instruções e
-acompanha tudo ao vivo: cada agente roda pelo **próprio cliente de linha de comando**
-(Claude Code, Codex CLI, OpenCode, Gemini CLI) e o orquestrador lê a saída JSON deles.
+*[Leia em português](README.pt-BR.md)*
 
-Port em Go do `tools/orq` (Python) do JinChronicles, agora genérico para qualquer projeto.
+An orchestrator for teams of AI coding agents, with a Windows 95 look. You build the org chart (who reports
+to whom, which client and which model each agent uses), hand out tasks and watch everything live: every agent
+runs through **its own command-line client** (Claude Code, Codex CLI, OpenCode, Gemini CLI) and the
+orchestrator reads their JSON output.
 
-Página do projeto, com tour pelas telas: [`docs/index.html`](docs/index.html) (publicada pelo GitHub Pages a partir de `docs/`).
+A Go port of the `tools/orq` Python script from JinChronicles, now generic for any project.
 
-## Telas
+Project page with a screen tour: [exadmax.github.io/TeamAgentOrchestrator](https://exadmax.github.io/TeamAgentOrchestrator/)
+(published by GitHub Pages from `docs/`).
 
-| Aba | O que faz |
+## Languages
+
+The whole app speaks **English by default** and **Brazilian Portuguese** as an option: **Tools → Language**.
+The choice covers the interface, the messages and errors from the backend, the task history and the prompts
+sent to the agents (a reviewer may answer `APPROVED`/`CHANGES` or `APROVADO`/`MUDANÇAS`). It is saved in
+`%APPDATA%\TeamAgentOrchestrator\settings.json`. Records written before a switch (session logs, step details)
+keep the language they were written in.
+
+## Screens
+
+| Tab | What it does |
 |---|---|
-| Início | o escritório: um computador por agente com a saída ao vivo; resumo do time e atividade recente |
-| Mesa do Agente | o agente diz o que precisa (pergunta, revisão, proposta); Responder, Delegar, Arquivar; Quadro de Tarefas |
-| Organograma | árvore do time; propriedades, rostinho, pausar, novo subordinado, remover |
-| Sprints | sprints e atividades: criar à mão ou gerar com um agente, rodar, revisar em outro cliente, fazer merge, fechar com retro |
-| Tokens | uso por agente lido do JSON de cada cliente |
-| Novo Agente | assistente em 3 passos |
-| Clientes | CLIs encontrados na máquina, versões, atualização no npm e prompt de teste |
-| Console | prompt estilo MS-DOS por agente, com a saída ao vivo |
+| Home | the office: one computer per agent with its live output; team summary and recent activity |
+| Agent Desk | the agent says what it needs (a question, a review, a proposal); Reply, Delegate, Archive; Task Board |
+| Org Chart | the team tree; properties, face, pause, new subordinate, remove |
+| Sprints | sprints and tasks: create by hand or generate with an agent, run, review on another client, merge, close with a retro |
+| Tokens | usage per agent, read from each client's JSON |
+| New Agent | a 3-step wizard |
+| Clients | CLIs found on the machine, versions, npm updates and a test prompt |
+| Console | an MS-DOS style prompt per agent, with live output |
 
-Janelas do menu **Ferramentas**: *Modelos e cotas* (relógios de cota, trocas de modelo, troca automática) e
-*Fluxo git* (branch por tarefa, base, prefixo). **Arquivo → Importar cartões** lê `docs/equipe/owners.json` e `docs/tasks/`.
+Windows in the **Tools** menu: *Models and quotas* (quota clocks, model swaps, automatic switching), *Git flow*
+(branch per task, base, prefix) and *Language*. **File → Import cards** reads `docs/equipe/owners.json` and `docs/tasks/`.
 
-## Rodar
+## Run
 
-Requisitos: Go 1.26+, Node 20+, [Wails v3](https://wails.io) (`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0`)
-e pelo menos um cliente de agente instalado (`npm i -g @anthropic-ai/claude-code @openai/codex @opencode/cli`).
+Requirements: Go 1.26+, Node 20+, [Wails v3](https://wails.io) (`go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0`)
+and at least one agent client installed and logged in (`npm i -g @anthropic-ai/claude-code @openai/codex @opencode/cli`).
 
 ```bash
-wails3 dev         # janela com recarga
+wails3 dev         # window with hot reload
 wails3 build       # bin/TeamAgent.exe
-go test ./...      # testes do backend
+go test ./...      # backend tests (includes the check that both languages have the same keys)
 ```
 
-Ao abrir, o orquestrador usa o último projeto (ou a pasta atual). **Arquivo → Abrir projeto…**
-escolhe outra pasta; se ela não tiver `tao.json`, ganha um time inicial (Orquestrador no Claude,
-Arquiteto, Engenheiro no Codex e Revisor no OpenCode).
+On start the orchestrator opens the last project (or the current folder). **File → Open project…** picks another
+folder; if it has no `tao.json`, it gets a starter team (Orchestrator and Architect on Claude, Engineer on Codex,
+QA Reviewer on OpenCode).
 
-- `tao.json`: o time (versionável).
-- `tao.tasks.json`: sprints e atividades (versionável).
-- `.tao/`: sessões, logs, relógios de cota, trocas de modelo, etapas e os worktrees das tarefas (fora do git;
-  o orquestrador põe `.tao/` em `.git/info/exclude` sozinho).
+- `tao.json`: the team (versioned).
+- `tao.tasks.json`: sprints and tasks (versioned).
+- `.tao/`: sessions, logs, quota clocks, model swaps, task steps and task worktrees (outside git;
+  the orchestrator adds `.tao/` to `.git/info/exclude` by itself).
 
-Em um repositório git, cada tarefa roda numa branch própria (`tao/T001-titulo`) dentro de `.tao/worktrees/T001`:
-o agente nunca mexe na sua pasta. Ao terminar, o orquestrador faz o commit, envia a branch e abre o PR com o `gh`
-(quando há `origin` no GitHub); depois da aprovação, **Fazer merge** junta na base (pelo PR, ou localmente).
+In a git repository each task runs on its own branch (`tao/T001-title`) inside `.tao/worktrees/T001`: the agent
+never touches your folder. When it finishes, the orchestrator commits, pushes the branch and opens the PR with
+`gh` (when `origin` is on GitHub); after approval, **Merge** brings it into the base (through the PR, or locally).
 
-Teste de ponta a ponta com um CLI de verdade (gasta um pouco de cota):
+End-to-end test with a real CLI (uses a little quota):
 
 ```bash
 TAO_E2E=1 TAO_E2E_CLIENT=codex go test -run TestEndToEnd .
 ```
 
-Só a interface, sem o Go (API simulada): `npm --prefix frontend run dev` e abra o endereço num navegador comum.
+Only the interface, without Go (simulated API): `npm --prefix frontend run dev` and open the address in a normal browser.
 
-Para inspecionar a janela de verdade sem acesso à tela, rode o app com `TAO_DEVTOOLS_PORT=9333`: o WebView2 abre
-o protocolo DevTools nessa porta (`http://127.0.0.1:9333/json`).
+To inspect the real window without screen access, run the app with `TAO_DEVTOOLS_PORT=9333`: WebView2 then opens
+the DevTools protocol on that port (`http://127.0.0.1:9333/json`).
 
-## Documentos
+## Translating
 
-- [AGENTS.md](AGENTS.md): regras para os agentes que trabalham neste repositório
-- [docs/ARQUITETURA.md](docs/ARQUITETURA.md): pacotes, fluxo de uma sessão e formatos lidos
-- [docs/MARCOS.md](docs/MARCOS.md): M1, M2 e M3 concluídos; M4 a seguir
+- Backend messages: `internal/i18n/locales/<lang>/*.json` (fmt formats, `%s`, `%[2]s`).
+- Interface: `frontend/src/i18n/<lang>.json` (`{name}` placeholders).
+- `go test ./internal/i18n/` fails when a key or a placeholder exists in one language and not in the other.
 
-Os desenhos em `frontend/src/assets` vêm do protótipo feito no Claude Design para este projeto.
-As fontes Pixelify Sans e VT323 são da licença SIL Open Font License.
+## Documents
+
+- [AGENTS.md](AGENTS.md): rules for the agents working on this repository
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): packages, the flow of a session and of a task, formats read
+- [docs/MILESTONES.md](docs/MILESTONES.md): M1, M2 and M3 done; M4 in progress
+
+The drawings in `frontend/src/assets` come from the prototype made in Claude Design for this project.
+The Pixelify Sans and VT323 fonts are under the SIL Open Font License.

@@ -10,7 +10,7 @@ version: "0.3.0"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "Orquestrador de times de agentes de IA"
+description: "Orchestrator for teams of AI coding agents"
 vendor: "Diogo Góes Zanetti"
 homepage: "https://wails.io"
 license: "MIT"

@@ -1,40 +1,46 @@
 # AGENTS.md — TeamAgentOrchestrator
 
-Instruções para todos os agentes deste repositório (Claude Code, Codex, OpenCode, Gemini CLI).
+Instructions for every agent working on this repository (Claude Code, Codex, OpenCode, Gemini CLI).
 
-## O projeto
+## The project
 
-Orquestrador de times de agentes de IA com interface gamificada estilo Windows 95.
-Port em Go do `tools/orq` (Python) do JinChronicles, agora genérico: qualquer projeto,
-qualquer time. Os agentes rodam pelos próprios clientes de linha de comando (Claude Code,
-Codex CLI, OpenCode, Gemini CLI) e o orquestrador lê a saída JSON deles para a interface.
+An orchestrator for teams of AI coding agents with a gamified Windows 95 interface. A Go port of the
+`tools/orq` Python script from JinChronicles, now generic: any project, any team. Agents run through their own
+command-line clients (Claude Code, Codex CLI, OpenCode, Gemini CLI) and the orchestrator reads their JSON output.
 
-- Backend: Go 1.26+, sem dependências além do Wails e da biblioteca padrão.
-- Interface: Wails v3 (janela nativa, WebView2) com HTML/CSS/JS puro em `frontend/`; o JS chama o Go por `Call.ByName("main.App.<Método>")` (`frontend/src/api.js`).
-- Arquitetura e marcos: `docs/ARQUITETURA.md` e `docs/MARCOS.md`.
+- Backend: Go 1.26+, no dependencies besides Wails and the standard library.
+- Interface: Wails v3 (native window, WebView2) with plain HTML/CSS/JS in `frontend/`; the JS calls Go through
+  `Call.ByName("main.App.<Method>")` (`frontend/src/api.js`).
+- Architecture and milestones: `docs/ARCHITECTURE.md` and `docs/MILESTONES.md` (Portuguese versions:
+  `docs/ARQUITETURA.md`, `docs/MARCOS.md`).
 
-## Regras
+## Rules
 
-1. **Idiomas:** conversa e documentos em pt-BR; código, identificadores, nomes de arquivo e
-   commits em inglês. Texto que aparece na interface fica em pt-BR.
-2. **Fronteiras:** só mexa nos arquivos que a tarefa lhe deu. Cada pacote em `internal/` tem
-   um dono por marco (veja `docs/MARCOS.md`).
-3. **Lógica pura testável:** `internal/failure`, `internal/store`, `internal/stream` e
-   `internal/team` não importam Wails nem fazem I/O de rede. Todo pacote novo vem com testes
-   (`go test ./...` precisa passar).
-4. **Tempo e relógio injetáveis:** funções que dependem da hora recebem `now time.Time`
-   (ou um `func() time.Time`), para os testes serem determinísticos.
-5. **Arquivos de estado** ficam em `.tao/` dentro do projeto orquestrado (fora do git), em JSON
-   ou JSONL legíveis. Nunca grave segredos.
-6. **Sem números mágicos espalhados:** limites (timeout, esperas) ficam em constantes
-   nomeadas no topo do pacote ou na configuração.
-7. **Antes de entregar:** `gofmt -l .` vazio, `go vet ./...` e `go test ./...` passando.
-8. Não faça commit nem push a menos que a tarefa peça.
+1. **Languages:** code, identifiers, file names, comments and commits in English. The product speaks English by
+   default and Brazilian Portuguese as an option: **no user-facing string literal in code**. Backend text goes
+   through `internal/i18n` (`i18n.T` / `i18n.Err`, catalogs in `internal/i18n/locales/<lang>/*.json`); interface
+   text through `t()` (`frontend/src/i18n/<lang>.json`). Every new key goes into **both** languages with the same
+   placeholders (`go test ./internal/i18n/` checks it). Prompts sent to agents are user-facing too.
+   Documents: English first (`README.md`, `docs/*.md`), with the Portuguese version kept in sync
+   (`README.pt-BR.md`, `docs/ARQUITETURA.md`, `docs/MARCOS.md`).
+2. **Boundaries:** only touch the files your task gave you. Each package in `internal/` has one owner per
+   milestone (see `docs/MILESTONES.md`).
+3. **Testable pure logic:** `internal/failure`, `internal/store`, `internal/stream`, `internal/team` and
+   `internal/i18n` do not import Wails nor do network I/O. Every new package comes with tests
+   (`go test ./...` must pass).
+4. **Injectable time:** functions that depend on the time take `now time.Time` (or a `func() time.Time`), so tests
+   are deterministic.
+5. **State files** live in `.tao/` inside the orchestrated project (outside git), as readable JSON or JSONL.
+   Never write secrets.
+6. **No scattered magic numbers:** limits (timeouts, waits) are named constants at the top of the package or
+   in configuration.
+7. **Before handing over:** `gofmt -l .` empty, `go vet ./...` and `go test ./...` passing.
+8. Do not commit or push unless the task asks for it.
 
-## Comandos
+## Commands
 
 ```bash
-go test ./...                 # testes do backend
-wails3 dev                    # app com recarga
-wails3 build                  # binário em bin/
+go test ./...                 # backend tests
+wails3 dev                    # app with hot reload
+wails3 build                  # binary in bin/
 ```

@@ -125,7 +125,7 @@ func TestTransitions(t *testing.T) {
 func TestTaskEditingAndHistory(t *testing.T) {
 	b := &Board{}
 	v := mustTask(t, b, NewTask{Proposed: true})
-	if v.ID != "T001" || v.Status != Proposed || v.Priority != Normal || v.Origin != "manual" || v.History[0].What != "criada" || !v.Created.Equal(fixed) {
+	if v.ID != "T001" || v.Status != Proposed || v.Priority != Normal || v.Origin != "manual" || v.History[0].What != "created" || !v.Created.Equal(fixed) {
 		t.Fatal(v)
 	}
 	s, e := b.NewSprint("Sprint", "Meta", fixed)
@@ -149,7 +149,7 @@ func TestTaskEditingAndHistory(t *testing.T) {
 		check(t, b.SetPriority(v.ID, Normal, "a", later))
 	}
 	got, _ = b.Task(v.ID)
-	if len(got.History) != historyLimit || got.History[0].What != "prioridade alterada" {
+	if len(got.History) != historyLimit || got.History[0].What != "priority changed" {
 		t.Fatal(got)
 	}
 	got.History[0].What = "alterado"
@@ -184,7 +184,7 @@ func TestTaskEditingAndHistory(t *testing.T) {
 	if v := mustTask(t, b, NewTask{}); v.ID != "T100" {
 		t.Fatal(v.ID)
 	}
-	labels := []string{"Proposta", "A fazer", "Fazendo", "Em revisão", "Concluída"}
+	labels := []string{"Proposed", "Ready", "In progress", "In review", "Done"}
 	for i, s := range Statuses {
 		if s.Label() != labels[i] {
 			t.Fatal(s)
@@ -393,12 +393,12 @@ func TestGitReviewAndMerge(t *testing.T) {
 	}
 	check(t, b.Review("T001", "r", true, "", fixed))
 	task = b.Tasks[0]
-	if task.Status != Review || !task.Approved || task.History[len(task.History)-1].What != "revisão: aprovada; falta o merge" {
+	if task.Status != Review || !task.Approved || task.History[len(task.History)-1].What != "review: approved; merge pending" {
 		t.Fatal(task)
 	}
 	check(t, b.Merged("T001", "a", fixed))
 	task = b.Tasks[0]
-	if task.Status != Done || task.History[len(task.History)-1].What != "merge feito" {
+	if task.Status != Done || task.History[len(task.History)-1].What != "merged" {
 		t.Fatal(task)
 	}
 	check(t, b.Reopen("T001", "a", "Refazer", fixed))

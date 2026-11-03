@@ -134,7 +134,7 @@ func TestRouteSwitchesModelThenReserve(t *testing.T) {
 	if err := a.store.SetClock(eng.Client, model, time.Hour, "quota", "teste"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.agentFor("engenheiro", ""); err == nil || !strings.Contains(err.Error(), "troca automática") {
+	if _, err := a.agentFor("engenheiro", ""); err == nil || !strings.Contains(err.Error(), "automatic switching") {
 		t.Fatalf("without auto-switch: %v", err)
 	}
 	if err := a.SetAutoSwitch(true); err != nil {

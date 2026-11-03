@@ -1,5 +1,7 @@
 # Arquitetura
 
+*[Read in English](ARCHITECTURE.md)*
+
 ## Visão geral
 
 ```
@@ -8,10 +10,12 @@
 │   abas: Início · Mesa · Organograma · Sprints  │
 │         Tokens · Novo Agente · Clientes ·      │
 │         Console                                │
+│   frontend/src/i18n: en.json, pt-BR.json       │
 └───────────────▲───────────────┬────────────────┘
        eventos  │               │ chamadas Call.ByName("main.App.X")
  (@wailsio/runtime)             ▼
 ┌──────────────── app.go (fachada) ──────────────┐
+│ internal/i18n     mensagens em en / pt-BR
 │ internal/team     organograma, agentes (tao.json)
 │ internal/clients  catálogo e detecção dos CLIs
 │ internal/runner   processo do CLI, timeout, log
@@ -45,6 +49,21 @@
 | **Reserva** | Agente que assume quando os modelos de outro estão sem cota | `tao.json` → `agents[].fallback` |
 | **Fluxo git** | Branch por tarefa, base e prefixo | `tao.json` → `git` |
 | **Worktree** | Cópia de trabalho da branch de uma tarefa | `<projeto>/.tao/worktrees/<id>` |
+| **Idioma** | `en` (padrão) ou `pt-BR` para interface, mensagens e prompts | `%APPDATA%\TeamAgentOrchestrator\settings.json` |
+
+## Idiomas (i18n)
+
+- `internal/i18n` embute `locales/<idioma>/*.json` (formatos do fmt). `i18n.T(chave, args...)` e `i18n.Err(...)` usam o
+  idioma atual; `i18n.Set` troca. Todo texto do backend que chega ao usuário passa por ele: erros, ajuda das falhas,
+  histórico das tarefas, time inicial, textos do importador, detalhes das etapas do git e os prompts dos agentes.
+- O histórico das tarefas é gravado como `key` + `args` (e um `what` em inglês para leitores antigos), então aparece
+  no idioma atual mesmo depois de uma troca. Logs de sessão e detalhes de etapa ficam no idioma em que foram escritos.
+- O frontend tem catálogos próprios (`frontend/src/i18n/*.json`, marcadores `{nome}`) e traduz os códigos que o
+  backend manda (status do agente, status da tarefa, etapas, fontes dos relógios).
+- `App.SetLanguage` grava a escolha, troca o título da janela e emite `language`, `snapshot` e `board`; o frontend
+  redesenha a janela inteira.
+- `go test ./internal/i18n/` confere que os dois idiomas têm as mesmas chaves e marcadores, nas duas camadas.
+- O parecer do revisor é lido nos dois idiomas: `APPROVED`/`CHANGES` ou `APROVADO`/`MUDANÇAS`.
 
 ## Fluxo de uma sessão
 
@@ -81,9 +100,9 @@ Etapas guardadas em `.tao/state/<id>.json`: `start` (branch e worktree), `work`,
   Falha de modelo (inexistente) põe o modelo fora por um dia.
 
 - **Rodar:** o responsável recebe título, critério de pronto, resumo anterior, histórico recente e a
-  resposta do Diogo (se houver). Se a última linha for uma pergunta, a tarefa bloqueia.
+  resposta do usuário (se houver). Se a última linha for uma pergunta, a tarefa bloqueia.
 - **Revisar:** o revisor da tarefa ou, sem ele, um agente ativo de outro cliente (prefere o emblema
-  `revisao`). Ele responde `APROVADO` ou `MUDANÇAS: ...`.
+  `revisao`), sempre de um cliente diferente de quem fez. Ele responde `APPROVED`/`APROVADO` ou `CHANGES:`/`MUDANÇAS: ...`.
 - **Gerar com Agente:** o agente devolve um array JSON de atividades; elas entram como propostas.
 - Cada sessão tem tempo máximo de 45 min (agente em laço) além do timeout por silêncio de 300 s.
 - Toda escrita de estado é atômica e repete a troca do arquivo por até meio segundo: no Windows a

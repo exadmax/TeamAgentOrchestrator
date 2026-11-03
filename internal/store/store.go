@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/fsx"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"os"
 	"path/filepath"
 	"sort"
@@ -443,7 +444,7 @@ type PhaseInfo struct {
 
 func taskFile(task string) (string, error) {
 	if task == "" || task == "." || task == ".." || strings.ContainsAny(task, "/\\:") {
-		return "", fmt.Errorf("identificador de tarefa inválido: %q", task)
+		return "", i18n.Err("store.invalid_task_id", task)
 	}
 	return filepath.Join("state", task+".json"), nil
 }

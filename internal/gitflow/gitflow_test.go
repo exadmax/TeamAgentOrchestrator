@@ -102,7 +102,7 @@ func TestWorktreeLifecycle(t *testing.T) {
 		t.Fatalf("diff: %s %v", stat, err)
 	}
 	write(t, filepath.Join(r.Dir, "initial.txt"), "dirty\n")
-	if err := r.Merge(ctx, "T1", branch, "", "Merge feature"); err == nil || !strings.Contains(err.Error(), "sem alterações") {
+	if err := r.Merge(ctx, "T1", branch, "", "Merge feature"); err == nil || !strings.Contains(err.Error(), "no changes") {
 		t.Fatalf("dirty merge: %v", err)
 	}
 	command(t, r.Dir, "restore", "initial.txt")

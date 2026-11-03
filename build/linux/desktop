@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
-Name=TeamAgent Orquestrador
-Comment=Orquestrador de times de agentes de IA
+Name=TeamAgent Orchestrator
+Comment=Orchestrator for teams of AI coding agents
 # The Exec line includes %u to pass the URL to the application
 Exec=/usr/local/bin/TeamAgent %u
 Terminal=false

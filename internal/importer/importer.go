@@ -4,7 +4,7 @@ package importer
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,7 +56,7 @@ func readRoles(data []byte) ([]role, error) {
 		return nil, err
 	}
 	if token != json.Delim('{') {
-		return nil, fmt.Errorf("roles precisa ser um objeto")
+		return nil, i18n.Err("importer.roles_object")
 	}
 	roles := []role{}
 	for dec.More() {
@@ -90,14 +90,14 @@ func agentName(id string) string {
 func parseCard(data []byte) (map[string]any, error) {
 	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
 	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
-		return nil, fmt.Errorf("front matter ausente")
+		return nil, i18n.Err("importer.front_matter_missing")
 	}
 	fields := map[string]any{}
 	for _, line := range lines[1:] {
 		line = strings.TrimSpace(line)
 		if line == "---" {
 			if text(fields, "id") == "" || text(fields, "title") == "" {
-				return nil, fmt.Errorf("id e título são obrigatórios")
+				return nil, i18n.Err("importer.required_fields")
 			}
 			return fields, nil
 		}
@@ -106,7 +106,7 @@ func parseCard(data []byte) (map[string]any, error) {
 		}
 		key, value, ok := strings.Cut(line, ":")
 		if !ok || strings.TrimSpace(key) == "" {
-			return nil, fmt.Errorf("linha inválida no front matter: %s", line)
+			return nil, i18n.Err("importer.invalid_front_matter_line", line)
 		}
 		value = strings.TrimSpace(value)
 		var v any
@@ -115,7 +115,7 @@ func parseCard(data []byte) (map[string]any, error) {
 		}
 		fields[strings.TrimSpace(key)] = v
 	}
-	return nil, fmt.Errorf("front matter sem delimitador de fechamento")
+	return nil, i18n.Err("importer.front_matter_unclosed")
 }
 
 func text(fields map[string]any, key string) string {
@@ -146,11 +146,11 @@ func Import(dir, projectName string, now time.Time) (*team.Team, *tasks.Board, R
 	report := Report{Warnings: []string{}}
 	data, err := os.ReadFile(filepath.Join(dir, ownersPath))
 	if err != nil {
-		return nil, nil, report, fmt.Errorf("ler equipe: %w", err)
+		return nil, nil, report, i18n.Err("importer.read_team", err)
 	}
 	roles, err := readRoles(data)
 	if err != nil {
-		return nil, nil, report, fmt.Errorf("equipe inválida: %w", err)
+		return nil, nil, report, i18n.Err("importer.invalid_team", err)
 	}
 	t := &team.Team{Name: projectName, Agents: []team.Agent{}}
 	known := map[string]bool{}
@@ -168,16 +168,16 @@ func Import(dir, projectName string, now time.Time) (*team.Team, *tasks.Board, R
 		}
 		instructions := []string{}
 		if len(r.Read) > 0 {
-			instructions = append(instructions, "Leia antes: "+strings.Join(r.Read, ", "))
+			instructions = append(instructions, i18n.T("importer.read_first", strings.Join(r.Read, ", ")))
 		}
 		if len(r.Owns) > 0 {
-			instructions = append(instructions, "Arquivos que você pode tocar: "+strings.Join(r.Owns, ", "))
+			instructions = append(instructions, i18n.T("importer.allowed_files", strings.Join(r.Owns, ", ")))
 		}
 		parent := ""
 		if r.ID != "produtor" && known["produtor"] {
 			parent = "produtor"
 		}
-		t.Agents = append(t.Agents, team.Agent{ID: r.ID, Name: agentName(r.ID), Role: "papel " + r.ID + " (importado)", Client: r.Tool, Tier: tier, Emblem: emblem, Face: faces[i%len(faces)], Parent: parent, Instructions: strings.Join(instructions, "\n")})
+		t.Agents = append(t.Agents, team.Agent{ID: r.ID, Name: agentName(r.ID), Role: i18n.T("importer.role", r.ID), Client: r.Tool, Tier: tier, Emblem: emblem, Face: faces[i%len(faces)], Parent: parent, Instructions: strings.Join(instructions, "\n")})
 	}
 	if err := t.Validate(); err != nil {
 		return nil, nil, report, err
@@ -185,28 +185,28 @@ func Import(dir, projectName string, now time.Time) (*team.Team, *tasks.Board, R
 	b := &tasks.Board{Tasks: []tasks.Task{}, Sprints: []tasks.Sprint{}}
 	files, err := filepath.Glob(filepath.Join(dir, "docs/tasks/*.md"))
 	if err != nil {
-		return nil, nil, report, fmt.Errorf("listar cards: %w", err)
+		return nil, nil, report, i18n.Err("importer.list_cards", err)
 	}
 	seen := map[string]bool{}
 	for _, file := range files {
 		data, err := os.ReadFile(file)
 		if err != nil {
-			return nil, nil, report, fmt.Errorf("ler card: %w", err)
+			return nil, nil, report, i18n.Err("importer.read_card", err)
 		}
 		fields, err := parseCard(data)
 		if err != nil {
-			report.Warnings = append(report.Warnings, fmt.Sprintf("card %s ignorado: %v", filepath.Base(file), err))
+			report.Warnings = append(report.Warnings, i18n.T("importer.skipped_card", filepath.Base(file), err))
 			continue
 		}
 		id := text(fields, "id")
 		if seen[id] {
-			report.Warnings = append(report.Warnings, fmt.Sprintf("card %s ignorado: id %s repetido", filepath.Base(file), id))
+			report.Warnings = append(report.Warnings, i18n.T("importer.duplicate_card", filepath.Base(file), id))
 			continue
 		}
 		seen[id] = true
-		task := tasks.Task{ID: id, Title: text(fields, "title"), Done: text(fields, "done"), Assignee: text(fields, "role"), Sprint: text(fields, "sprint"), Status: tasks.Status(text(fields, "status")), Priority: tasks.Normal, Origin: "importado de docs/tasks/" + filepath.Base(file), Summary: text(fields, "summary"), Branch: text(fields, "branch"), Question: question(fields["questions"]), Created: now, Updated: now}
+		task := tasks.Task{ID: id, Title: text(fields, "title"), Done: text(fields, "done"), Assignee: text(fields, "role"), Sprint: text(fields, "sprint"), Status: tasks.Status(text(fields, "status")), Priority: tasks.Normal, Origin: "import:docs/tasks/" + filepath.Base(file), Summary: text(fields, "summary"), Branch: text(fields, "branch"), Question: question(fields["questions"]), Created: now, Updated: now}
 		if !known[task.Assignee] {
-			report.Warnings = append(report.Warnings, fmt.Sprintf("tarefa %s: papel %q não existe", id, task.Assignee))
+			report.Warnings = append(report.Warnings, i18n.T("importer.unknown_role", id, task.Assignee))
 			task.Assignee = ""
 		}
 		reviewer := text(fields, "reviewer")
@@ -224,7 +224,7 @@ func Import(dir, projectName string, now time.Time) (*team.Team, *tasks.Board, R
 		case "blocked":
 			task.Status = tasks.InProgress
 		default:
-			report.Warnings = append(report.Warnings, fmt.Sprintf("tarefa %s: estado %q desconhecido; usando a fazer", id, task.Status))
+			report.Warnings = append(report.Warnings, i18n.T("importer.unknown_status", id, task.Status))
 			task.Status = tasks.Ready
 		}
 		if text(fields, "priority") == "high" {

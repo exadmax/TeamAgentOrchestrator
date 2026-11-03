@@ -1,8 +1,8 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"regexp"
 	"strings"
 	"time"
@@ -13,7 +13,7 @@ import (
 )
 
 // Who does things by hand in the task history.
-const human = "diogo"
+const human = "user" // the person at the keyboard; the UI shows it as "you"
 
 // SprintView is a sprint plus its progress.
 type SprintView struct {
@@ -60,7 +60,7 @@ func (a *App) board(f func(b *tasks.Board) error) error {
 	dir := a.dir
 	a.mu.Unlock()
 	if dir == "" {
-		return errors.New("nenhum projeto aberto")
+		return i18n.Err("app.no_project")
 	}
 	b, err := tasks.Load(dir)
 	if err != nil {
@@ -107,6 +107,11 @@ func (a *App) Board() BoardView {
 	}
 	for _, tk := range b.Tasks {
 		tv := TaskView{Task: tk, StatusLabel: tk.Status.Label(), Running: running[tk.ID]}
+		tv.History = make([]tasks.Event, len(tk.History))
+		for i, e := range tk.History { // the UI shows What: render it in the current language
+			e.What = e.Text()
+			tv.History[i] = e
+		}
 		if ag, ok := t.Get(tk.Assignee); ok {
 			tv.AssigneeName = ag.Name
 		}
@@ -184,14 +189,14 @@ func (a *App) agentFor(id, task string) (route, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.team == nil {
-		return route{}, errors.New("nenhum projeto aberto")
+		return route{}, i18n.Err("app.no_project")
 	}
 	ag, ok := a.team.Get(id)
 	if !ok {
-		return route{}, fmt.Errorf("agente %q não existe", id)
+		return route{}, i18n.Err("app.agent_not_found", id)
 	}
 	if ag.Paused {
-		return route{}, fmt.Errorf("%s está pausado", ag.Name)
+		return route{}, i18n.Err("app.agent_paused", ag.Name)
 	}
 	return a.routeLocked(ag, task)
 }
@@ -213,13 +218,13 @@ func (a *App) runTask(id, note string, switches int) error {
 	if err := a.board(func(b *tasks.Board) error {
 		t, ok := b.Task(id)
 		if !ok {
-			return fmt.Errorf("tarefa %s não existe", id)
+			return i18n.Err("app.task_not_found", id)
 		}
 		if t.Assignee == "" {
-			return fmt.Errorf("%s não tem responsável", id)
+			return i18n.Err("tasks.no_assignee", id)
 		}
 		if t.Status == tasks.Proposed {
-			return fmt.Errorf("%s ainda é uma proposta: aprove antes", id)
+			return i18n.Err("tasks.still_proposal", id)
 		}
 		tk = t
 		return nil
@@ -259,13 +264,13 @@ func (a *App) runTask(id, note string, switches int) error {
 			a.warn(id, st.Mark(id, "work", "failed", store.PhaseInfo{Agent: ag.ID, Client: ag.Client, Model: model, Detail: string(o.Kind)}))
 			if err := a.runTask(id, note, switches+1); err != nil {
 				a.warn(id, a.board(func(b *tasks.Board) error {
-					return b.Ask(id, ag.ID, fmt.Sprintf("falhou (%s) e não deu para trocar: %v", o.Kind, err), now)
+					return b.Ask(id, ag.ID, i18n.T("tasks.failed_no_switch", o.Kind, err), now)
 				}))
 			}
 		case o.Kind != "":
 			a.warn(id, st.Mark(id, "work", "failed", store.PhaseInfo{Agent: ag.ID, Client: ag.Client, Model: model, Detail: string(o.Kind)}))
 			a.warn(id, a.board(func(b *tasks.Board) error {
-				return b.Ask(id, ag.ID, fmt.Sprintf("falhou (%s): %s", o.Kind, failure.Help(o.Kind)), now)
+				return b.Ask(id, ag.ID, i18n.T("tasks.failed", o.Kind, failure.Help(o.Kind)), now)
 			}))
 		case o.Question != "":
 			a.warn(id, st.Mark(id, "work", "blocked", store.PhaseInfo{Agent: ag.ID, Client: ag.Client, Model: model, Detail: "pergunta"}))
@@ -289,7 +294,7 @@ func (a *App) runTask(id, note string, switches int) error {
 func (a *App) AnswerTask(id, answer string) error {
 	answer = strings.TrimSpace(answer)
 	if answer == "" {
-		return errors.New("escreva a resposta")
+		return i18n.Err("tasks.write_answer")
 	}
 	var question string
 	if err := a.board(func(b *tasks.Board) error {
@@ -299,9 +304,9 @@ func (a *App) AnswerTask(id, answer string) error {
 	}); err != nil {
 		return err
 	}
-	note := "Resposta do Diogo: " + answer
+	note := i18n.T("prompt.user_answer", answer)
 	if question != "" {
-		note = fmt.Sprintf("Você perguntou: %q. %s", question, note)
+		note = i18n.T("prompt.you_asked", question, note)
 	}
 	return a.runTask(id, note, 0)
 }
@@ -315,7 +320,7 @@ func (a *App) DelegateTask(id, to, note string) error {
 		return err
 	}
 	if strings.TrimSpace(note) != "" {
-		note = "Observação de quem delegou: " + note
+		note = i18n.T("prompt.delegate_note", note)
 	}
 	return a.runTask(id, note, 0)
 }
@@ -326,10 +331,10 @@ func (a *App) ReviewTask(id string) error {
 	if err := a.board(func(b *tasks.Board) error {
 		t, ok := b.Task(id)
 		if !ok {
-			return fmt.Errorf("tarefa %s não existe", id)
+			return i18n.Err("app.task_not_found", id)
 		}
 		if t.Status != tasks.Review {
-			return fmt.Errorf("%s não está em revisão", id)
+			return i18n.Err("tasks.not_in_review", id)
 		}
 		tk = t
 		return nil
@@ -349,21 +354,21 @@ func (a *App) ReviewTask(id string) error {
 	}
 	revID := tk.Reviewer
 	if revID != "" && a.clientOf(revID) == worker {
-		a.push(Line{Agent: id, Kind: "info", Text: fmt.Sprintf("%s usa o mesmo cliente de quem fez a tarefa (%s): escolhendo outro revisor", revID, worker)})
+		a.push(Line{Agent: id, Kind: "info", Text: i18n.T("tasks.same_client_reviewer", revID, worker)})
 		revID = ""
 	}
 	if revID == "" {
 		revID = a.pickReviewer(tk.Assignee, worker)
 	}
 	if revID == "" {
-		return errors.New("nenhum revisor disponível: precisa de um agente ativo em outro cliente")
+		return i18n.Err("tasks.no_reviewer")
 	}
 	r, err := a.agentFor(revID, id)
 	if err != nil {
 		return err
 	}
 	if r.agent.Client == worker {
-		return fmt.Errorf("o revisor %s caiu no mesmo cliente de quem fez a tarefa (%s)", r.agent.Name, worker)
+		return i18n.Err("tasks.reviewer_same_client", r.agent.Name, worker)
 	}
 	rev, model := r.agent, r.model
 	a.noteRoute(revID, r)
@@ -380,7 +385,7 @@ func (a *App) ReviewTask(id string) error {
 	}
 	a.warn(id, st.Mark(id, "review", "running", store.PhaseInfo{Agent: rev.ID, Client: rev.Client, Model: model}))
 	a.setTaskRun(id, true)
-	err = a.launch(rev.ID, rev.Client, model, prompt, fmt.Sprintf("[%s] revisão", id), id, workDir, func(o Outcome) {
+	err = a.launch(rev.ID, rev.Client, model, prompt, i18n.T("tasks.review_label", id), id, workDir, func(o Outcome) {
 		a.setTaskRun(id, false)
 		now := time.Now()
 		if o.Kind != "" {
@@ -391,7 +396,7 @@ func (a *App) ReviewTask(id string) error {
 		if !ok {
 			a.warn(id, st.Mark(id, "review", "blocked", store.PhaseInfo{Agent: rev.ID, Client: rev.Client, Detail: "sem parecer"}))
 			a.warn(id, a.board(func(b *tasks.Board) error {
-				return b.Ask(id, rev.ID, "o revisor não deu um parecer claro: "+oneLine(o.Final), now)
+				return b.Ask(id, rev.ID, i18n.T("tasks.unclear_verdict", oneLine(o.Final)), now)
 			}))
 			return
 		}
@@ -403,7 +408,7 @@ func (a *App) ReviewTask(id string) error {
 		a.warn(id, st.Mark(id, "verdict", "ok", store.PhaseInfo{Agent: rev.ID, Verdict: verdict}))
 		a.warn(id, a.board(func(b *tasks.Board) error { return b.Review(id, rev.ID, approve, note, now) }))
 		if !approve {
-			a.warn(id, st.Mark(id, "work", "pending", store.PhaseInfo{Detail: "revisão pediu mudanças"}))
+			a.warn(id, st.Mark(id, "work", "pending", store.PhaseInfo{Detail: i18n.T("tasks.review_asked_changes")}))
 		}
 	})
 	if err != nil {
@@ -449,7 +454,7 @@ func (a *App) pickReviewer(author, worker string) string {
 func (a *App) GenerateTasks(agentID, objective, sprint string) error {
 	objective = strings.TrimSpace(objective)
 	if objective == "" {
-		return errors.New("escreva o objetivo")
+		return i18n.Err("tasks.write_objective")
 	}
 	r, err := a.agentFor(agentID, "")
 	if err != nil {
@@ -464,23 +469,15 @@ func (a *App) GenerateTasks(agentID, objective, sprint string) error {
 		roster = append(roster, fmt.Sprintf("- %s: %s (%s)", x.ID, x.Name, x.Role))
 		ids = append(ids, x.ID)
 	}
-	prompt := a.promptLocked(ag, fmt.Sprintf(`Quebre o objetivo abaixo em 3 a 8 atividades pequenas e verificáveis, e atribua cada uma ao agente mais adequado do time.
-Objetivo: %s
-
-Time (id: nome (função)):
-%s
-
-Não execute nada e não altere arquivos: só planeje. Responda SOMENTE com um array JSON, sem texto antes ou depois:
-[{"title": "atividade curta", "done": "como saber que terminou", "assignee": "<id do agente>", "priority": "normal"}]`,
-		objective, strings.Join(roster, "\n")))
+	prompt := a.promptLocked(ag, i18n.T("prompt.generate", objective, strings.Join(roster, "\n")))
 	a.mu.Unlock()
-	return a.launch(ag.ID, ag.Client, model, prompt, "planejar: "+objective, "", "", func(o Outcome) {
+	return a.launch(ag.ID, ag.Client, model, prompt, i18n.T("tasks.plan_label", objective), "", "", func(o Outcome) {
 		if o.Kind != "" {
 			return
 		}
 		list, err := tasks.ParseGenerated(o.Final, ids)
 		if err != nil {
-			a.push(Line{Agent: ag.ID, Kind: "error", Error: true, Text: "não consegui ler as atividades geradas: " + err.Error()})
+			a.push(Line{Agent: ag.ID, Kind: "error", Error: true, Text: i18n.T("tasks.generated_unreadable", err)})
 			return
 		}
 		a.warn(ag.ID, a.board(func(b *tasks.Board) error {
@@ -492,14 +489,14 @@ Não execute nada e não altere arquivos: só planeje. Responda SOMENTE com um a
 			}
 			return nil
 		}))
-		a.push(Line{Agent: ag.ID, Kind: "end", Text: fmt.Sprintf("%d atividades propostas na aba Sprints", len(list))})
+		a.push(Line{Agent: ag.ID, Kind: "end", Text: i18n.T("tasks.generated_done", len(list))})
 	})
 }
 
 // warn surfaces a failed state write (it used to be silently dropped) in "Atividade Recente".
 func (a *App) warn(task string, err error) {
 	if err != nil {
-		a.push(Line{Agent: task, Kind: "error", Error: true, Text: "não consegui gravar o estado: " + err.Error()})
+		a.push(Line{Agent: task, Kind: "error", Error: true, Text: i18n.T("app.state_write_failed", err)})
 	}
 }
 
@@ -518,51 +515,46 @@ func (a *App) setTaskRun(id string, on bool) {
 
 func taskPrompt(t tasks.Task, note string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Tarefa %s: %s\nPronto quando: %s\n", t.ID, t.Title, orDash(t.Done))
+	b.WriteString(i18n.T("prompt.task_head", t.ID, t.Title, orDash(t.Done)))
 	if t.Summary != "" {
-		fmt.Fprintf(&b, "Resultado anterior: %s\n", t.Summary)
+		b.WriteString(i18n.T("prompt.previous_result", t.Summary))
 	}
 	for _, v := range t.Verdicts {
 		if strings.HasSuffix(v, ":changes") {
-			fmt.Fprintf(&b, "A revisão anterior pediu mudanças; veja o histórico abaixo.\n")
+			b.WriteString(i18n.T("prompt.changes_requested"))
 			break
 		}
 	}
 	if n := len(t.History); n > 0 {
-		b.WriteString("Histórico recente:\n")
+		b.WriteString(i18n.T("prompt.recent_history"))
 		for _, e := range t.History[max(0, n-5):] {
-			fmt.Fprintf(&b, "- %s (%s)\n", e.What, e.By)
+			fmt.Fprintf(&b, "- %s (%s)\n", e.Text(), e.By)
 		}
 	}
 	if note != "" {
 		b.WriteString(note + "\n")
 	}
-	b.WriteString("\nFaça a tarefa. Ao terminar, escreva por último uma linha com o resumo do que foi feito. " +
-		"Se precisar de uma decisão do Diogo para continuar, pare e termine a resposta com UMA pergunta (terminada em ?).")
+	b.WriteString(i18n.T("prompt.do_task"))
 	return b.String()
 }
 
 func reviewPrompt(t tasks.Task) string {
-	return fmt.Sprintf(`Revise a tarefa %s feita por outro agente: %s
-Pronto quando: %s
-Resumo de quem fez: %s
-
-Confira nos arquivos do projeto se o critério de pronto foi cumprido. Não altere nada.
-Responda com uma linha que comece por APROVADO ou por MUDANÇAS: seguida do que precisa mudar.`,
-		t.ID, t.Title, orDash(t.Done), orDash(t.Summary))
+	return i18n.T("prompt.review", t.ID, t.Title, orDash(t.Done), orDash(t.Summary))
 }
 
-// verdictRe tolerates markdown around the keyword: "**APROVADO** - ok", "> MUDANÇAS: ...".
-var verdictRe = regexp.MustCompile(`(?im)^[\s*_>#-]*(APROVADO|MUDAN[ÇC]AS)[\s*_:\-–]*(.*)$`)
+// verdictRe tolerates markdown around the keyword ("**APPROVED** - ok", "> CHANGES: ...") and accepts the
+// Portuguese words too, so a reviewer answering in either language is understood.
+var verdictRe = regexp.MustCompile(`(?im)^[\s*_>#-]*(APPROVED|CHANGES|APROVADO|MUDAN[ÇC]AS)[\s*_:\-–]*(.*)$`)
 
-// parseVerdict reads the reviewer's answer: the last APROVADO / MUDANÇAS line wins.
+// parseVerdict reads the reviewer's answer: the last APPROVED / CHANGES line wins.
 func parseVerdict(text string) (approve bool, note string, ok bool) {
 	m := verdictRe.FindAllStringSubmatch(text, -1)
 	if len(m) == 0 {
 		return false, "", false
 	}
 	last := m[len(m)-1]
-	return strings.EqualFold(last[1], "APROVADO"), strings.TrimSpace(last[2]), true
+	approved := strings.EqualFold(last[1], "APPROVED") || strings.EqualFold(last[1], "APROVADO")
+	return approved, strings.TrimSpace(last[2]), true
 }
 
 func oneLine(s string) string {

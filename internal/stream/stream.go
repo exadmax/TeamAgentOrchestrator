@@ -5,6 +5,7 @@ package stream
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"strings"
 )
 
@@ -113,7 +114,7 @@ func parseClaude(m map[string]any) []Event {
 			// A failed tool call is part of the agent's work (it reads the error and moves on),
 			// not a failure of the CLI: it stays a tool event.
 			if str(part, "type") == "tool_result" && boolean(part, "is_error") {
-				return []Event{{Kind: Tool, Tool: "erro da ferramenta", Text: clip(contentText(part["content"])), IsError: true}}
+				return []Event{{Kind: Tool, Tool: i18n.T("stream.tool_error"), Text: clip(contentText(part["content"])), IsError: true}}
 			}
 		}
 	case "result":
@@ -127,7 +128,7 @@ func parseClaude(m map[string]any) []Event {
 	case "rate_limit_event":
 		info := obj(m, "rate_limit_info")
 		if s := str(info, "status"); s != "" && s != "allowed" {
-			return []Event{{Kind: Info, Text: "limite de uso: " + s + " (" + str(info, "rateLimitType") + ")"}}
+			return []Event{{Kind: Info, Text: i18n.T("stream.usage_limit", s, str(info, "rateLimitType"))}}
 		}
 	}
 	return nil

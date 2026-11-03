@@ -38,18 +38,18 @@ func TestImportJin(t *testing.T) {
 		if i == 0 {
 			parent = ""
 		}
-		if a.ID != ids[i] || a.Name != names[i] || a.Client != clients[i] || a.Tier != tiers[i] || a.Emblem != badges[i] || a.Parent != parent || a.Face != faces[i] || a.Role != "papel "+ids[i]+" (importado)" {
+		if a.ID != ids[i] || a.Name != names[i] || a.Client != clients[i] || a.Tier != tiers[i] || a.Emblem != badges[i] || a.Parent != parent || a.Face != faces[i] || a.Role != "role "+ids[i]+" (imported)" {
 			t.Fatal(a)
 		}
 	}
-	if team.Agents[0].Instructions != "Leia antes: docs/equipe/papeis/produtor.md\nArquivos que você pode tocar: docs/tasks/" {
+	if team.Agents[0].Instructions != "Read first: docs/equipe/papeis/produtor.md\nFiles you may edit: docs/tasks/" {
 		t.Fatal(team.Agents[0])
 	}
 	if b.Tasks[0].ID != "T001" || b.Tasks[1].ID != "T005" || b.Tasks[2].ID != "T006" {
 		t.Fatal(b.Tasks)
 	}
 	review := b.Tasks[1]
-	if review.Status != tasks.Review || review.Reviewer != "gameplay" || !review.Approved || review.Branch != "claude/T005-vite-ts-strict-phaser-e-tela-320" || review.Summary != "Vite + TS + Phaser." || review.Assignee != "arquiteto" || review.Priority != tasks.Normal || review.Origin != "importado de docs/tasks/T005.md" || review.Done == "" {
+	if review.Status != tasks.Review || review.Reviewer != "gameplay" || !review.Approved || review.Branch != "claude/T005-vite-ts-strict-phaser-e-tela-320" || review.Summary != "Vite + TS + Phaser." || review.Assignee != "arquiteto" || review.Priority != tasks.Normal || review.Origin != "import:docs/tasks/T005.md" || review.Done == "" {
 		t.Fatal(review)
 	}
 	if review.Created.Format("2006-01-02") != "2026-11-02" || !review.Updated.Equal(fixed) {

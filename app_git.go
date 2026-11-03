@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"strings"
 	"time"
 
@@ -37,7 +37,7 @@ func gitRepoFor(dir string, cfg team.Git) (*gitflow.Repo, GitView) {
 	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
 	defer cancel()
 	if !r.IsRepo(ctx) {
-		return nil, GitView{Reason: "a pasta do projeto não é um repositório git"}
+		return nil, GitView{Reason: i18n.T("git.not_repo")}
 	}
 	r.Base = cfg.Base
 	if r.Base == "" {
@@ -45,7 +45,7 @@ func gitRepoFor(dir string, cfg team.Git) (*gitflow.Repo, GitView) {
 	}
 	v := GitView{On: !cfg.Off, Off: cfg.Off, Base: r.Base, Prefix: r.Prefix, Remote: r.HasRemote(ctx), Gh: r.HasGh()}
 	if cfg.Off {
-		v.Reason = "desligado em Ferramentas → Fluxo git"
+		v.Reason = i18n.T("git.turned_off")
 		return nil, v
 	}
 	return r, v
@@ -96,7 +96,7 @@ func (a *App) gitStart(repo *gitflow.Repo, tk tasks.Task) (string, error) {
 	}
 	wt, err := repo.Ensure(ctx, tk.ID, branch)
 	if err != nil {
-		return "", fmt.Errorf("não consegui preparar a branch %s: %w", branch, err)
+		return "", i18n.Err("git.prepare_failed", branch, err)
 	}
 	if branch != tk.Branch {
 		if err := a.board(func(b *tasks.Board) error { return b.SetGit(tk.ID, branch, "", human, time.Now()) }); err != nil {
@@ -124,18 +124,18 @@ func (a *App) gitSubmit(repo *gitflow.Repo, st *store.Store, id, by string, fina
 		return
 	}
 	ahead, _ := repo.Ahead(ctx, tk.Branch)
-	detail := fmt.Sprintf("%d commit(s) na %s", ahead, tk.Branch)
+	detail := i18n.T("git.commits_on", ahead, tk.Branch)
 	if !committed && ahead == 0 {
-		detail = "o agente não alterou arquivos"
+		detail = i18n.T("git.no_changes")
 	}
 	a.warn(id, st.Mark(id, "submit", "ok", store.PhaseInfo{Agent: by, Detail: detail}))
 
 	switch {
 	case ahead == 0:
-		a.warn(id, st.Mark(id, "pr", "skipped", store.PhaseInfo{Detail: "nada para enviar"}))
+		a.warn(id, st.Mark(id, "pr", "skipped", store.PhaseInfo{Detail: i18n.T("git.nothing_to_push")}))
 		return
 	case !repo.HasRemote(ctx) || !repo.HasGh():
-		a.warn(id, st.Mark(id, "pr", "skipped", store.PhaseInfo{Detail: "sem origin ou sem gh: o merge será local"}))
+		a.warn(id, st.Mark(id, "pr", "skipped", store.PhaseInfo{Detail: i18n.T("git.no_remote_or_gh")}))
 		return
 	case !hostedRemote(ctx, repo):
 		// a folder or bare repo as origin: push it, but there is no PR to open
@@ -143,14 +143,14 @@ func (a *App) gitSubmit(repo *gitflow.Repo, st *store.Store, id, by string, fina
 			a.warn(id, st.Mark(id, "pr", "failed", store.PhaseInfo{Detail: "push: " + err.Error()}))
 			return
 		}
-		a.warn(id, st.Mark(id, "pr", "skipped", store.PhaseInfo{Detail: "origin local: branch enviada, sem PR; o merge será local"}))
+		a.warn(id, st.Mark(id, "pr", "skipped", store.PhaseInfo{Detail: i18n.T("git.local_origin")}))
 		return
 	}
 	if err := repo.Push(ctx, tk.Branch); err != nil {
 		a.warn(id, st.Mark(id, "pr", "failed", store.PhaseInfo{Detail: "push: " + err.Error()}))
 		return
 	}
-	body := fmt.Sprintf("**%s: %s**\n\nPronto quando: %s\n\nResumo: %s\n\n🤖 Aberto pelo TeamAgent Orquestrador",
+	body := i18n.T("git.pr_body",
 		tk.ID, tk.Title, orDash(tk.Done), orDash(oneLine(final)))
 	url, err := repo.OpenPR(ctx, tk.Branch, tk.ID+": "+tk.Title, body)
 	if err != nil {
@@ -171,18 +171,18 @@ func hostedRemote(ctx context.Context, repo *gitflow.Repo) bool {
 func (a *App) MergeTask(id string) error {
 	repo := a.gitRepo()
 	if repo == nil {
-		return errors.New("o fluxo git está desligado neste projeto")
+		return i18n.Err("git.flow_off")
 	}
 	var tk tasks.Task
 	if err := a.board(func(b *tasks.Board) error {
 		t, ok := b.Task(id)
 		switch {
 		case !ok:
-			return fmt.Errorf("tarefa %s não existe", id)
+			return i18n.Err("app.task_not_found", id)
 		case !t.Approved:
-			return fmt.Errorf("%s ainda não foi aprovada na revisão", id)
+			return i18n.Err("git.not_approved", id)
 		case t.Branch == "":
-			return fmt.Errorf("%s não tem branch", id)
+			return i18n.Err("git.no_branch", id)
 		}
 		tk = t
 		return nil
@@ -199,8 +199,8 @@ func (a *App) MergeTask(id string) error {
 		go func() { a.emit("board", a.Board()) }()
 		return err
 	}
-	a.warn(id, st.Mark(id, "merge", "ok", store.PhaseInfo{Detail: "na " + repo.Base}))
-	a.push(Line{Agent: id, Kind: "end", Text: fmt.Sprintf("%s entrou na %s", id, repo.Base)})
+	a.warn(id, st.Mark(id, "merge", "ok", store.PhaseInfo{Detail: i18n.T("git.merged_into", repo.Base)}))
+	a.push(Line{Agent: id, Kind: "end", Text: i18n.T("git.merged_line", id, repo.Base)})
 	return a.board(func(b *tasks.Board) error { return b.Merged(id, human, time.Now()) })
 }
 
@@ -213,9 +213,9 @@ func (a *App) reviewContext(repo *gitflow.Repo, tk tasks.Task) string {
 	defer cancel()
 	stat, err := repo.DiffStat(ctx, tk.Branch)
 	if err != nil || strings.TrimSpace(stat) == "" {
-		stat = "(sem alterações em relação à " + repo.Base + ")"
+		stat = i18n.T("git.no_diff", repo.Base)
 	}
-	return fmt.Sprintf("\nVocê está na branch %s. Veja as mudanças com: git diff %s...%s\nResumo do diff:\n%s\n",
+	return i18n.T("git.review_context",
 		tk.Branch, repo.Base, tk.Branch, stat)
 }
 
@@ -248,7 +248,7 @@ func (a *App) ImportCards() (importer.Report, error) {
 	}
 	a.mu.Unlock()
 	if busy {
-		return importer.Report{}, errors.New("há agentes trabalhando: aguarde ou pare as sessões antes de importar")
+		return importer.Report{}, i18n.Err("import.agents_busy")
 	}
 	t, b, rep, err := importer.Import(dir, name, time.Now())
 	if err != nil {
@@ -271,7 +271,7 @@ func (a *App) ImportCards() (importer.Report, error) {
 	if err := a.open(dir); err != nil {
 		return rep, err
 	}
-	a.push(Line{Agent: "importer", Kind: "end", Text: fmt.Sprintf("importados %d agentes, %d tarefas e %d sprints", rep.Agents, rep.Tasks, rep.Sprints)})
+	a.push(Line{Agent: "importer", Kind: "end", Text: i18n.T("import.done", rep.Agents, rep.Tasks, rep.Sprints)})
 	a.emit("snapshot", a.Snapshot())
 	go func() { a.emit("board", a.Board()) }()
 	return rep, nil

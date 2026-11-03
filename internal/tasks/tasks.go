@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/exadmax/TeamAgentOrchestrator/internal/fsx"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"os"
 	"path/filepath"
 	"sort"
@@ -31,15 +32,15 @@ var Statuses = []Status{Proposed, Ready, InProgress, Review, Done}
 func (s Status) Label() string {
 	switch s {
 	case Proposed:
-		return "Proposta"
+		return i18n.T("tasks.status.proposed")
 	case Ready:
-		return "A fazer"
+		return i18n.T("tasks.status.ready")
 	case InProgress:
-		return "Fazendo"
+		return i18n.T("tasks.status.in_progress")
 	case Review:
-		return "Em revisão"
+		return i18n.T("tasks.status.review")
 	case Done:
-		return "Concluída"
+		return i18n.T("tasks.status.done")
 	}
 	return string(s)
 }
@@ -55,7 +56,25 @@ type Event struct {
 	At   time.Time `json:"at"`
 	By   string    `json:"by"`
 	What string    `json:"what"`
+	Key  string    `json:"key,omitempty"`
+	Args []string  `json:"args,omitempty"`
 }
+
+// Text translates structured events and preserves legacy history verbatim.
+func (e Event) Text() string {
+	if e.Key == "" {
+		return e.What
+	}
+	return i18n.T(e.Key, eventArgs(e.Args)...)
+}
+func eventArgs(args []string) []any {
+	out := make([]any, len(args))
+	for i, arg := range args {
+		out[i] = arg
+	}
+	return out
+}
+
 type Task struct {
 	Branch   string    `json:"branch,omitempty"`
 	PR       string    `json:"pr,omitempty"`
@@ -110,32 +129,32 @@ func Load(dir string) (*Board, error) {
 		return b, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("ler quadro: %w", err)
+		return nil, i18n.Err("tasks.read_board", err)
 	}
 	if err = json.Unmarshal(data, b); err != nil {
-		return nil, fmt.Errorf("quadro inválido: %w", err)
+		return nil, i18n.Err("tasks.invalid_board", err)
 	}
 	return b, nil
 }
 func (b *Board) Save(dir string) error {
 	data, err := json.MarshalIndent(b, "", "  ")
 	if err != nil {
-		return fmt.Errorf("codificar quadro: %w", err)
+		return i18n.Err("tasks.encode_board", err)
 	}
 	f, err := os.CreateTemp(dir, ".tao.tasks-*")
 	if err != nil {
-		return fmt.Errorf("criar temporário: %w", err)
+		return i18n.Err("tasks.create_temp", err)
 	}
 	defer os.Remove(f.Name())
 	if _, err = f.Write(append(data, '\n')); err != nil {
 		f.Close()
-		return fmt.Errorf("gravar quadro: %w", err)
+		return i18n.Err("tasks.write_board", err)
 	}
 	if err = f.Close(); err != nil {
-		return fmt.Errorf("fechar temporário: %w", err)
+		return i18n.Err("tasks.close_temp", err)
 	}
 	if err = fsx.Replace(f.Name(), filepath.Join(dir, FileName)); err != nil {
-		return fmt.Errorf("substituir quadro: %w", err)
+		return i18n.Err("tasks.replace_board", err)
 	}
 	return nil
 }
@@ -158,7 +177,7 @@ func nextID(ids []string, prefix string, width int) string {
 }
 func (b *Board) NewSprint(title, goal string, now time.Time) (Sprint, error) {
 	if strings.TrimSpace(title) == "" {
-		return Sprint{}, fmt.Errorf("título da sprint é obrigatório")
+		return Sprint{}, i18n.Err("tasks.sprint_title_required")
 	}
 	ids := []string{}
 	for _, s := range b.Sprints {
@@ -174,7 +193,7 @@ func (b *Board) sprintIndex(id string) (int, error) {
 			return i, nil
 		}
 	}
-	return -1, fmt.Errorf("sprint %s não existe", id)
+	return -1, i18n.Err("tasks.sprint_not_found", id)
 }
 func (b *Board) Sprint(id string) (Sprint, bool) {
 	i, e := b.sprintIndex(id)
@@ -207,10 +226,10 @@ func (b *Board) StartSprint(id string, now time.Time) error {
 		return e
 	}
 	if b.Sprints[i].Status != Planned {
-		return fmt.Errorf("sprint %s precisa estar planejada", id)
+		return i18n.Err("tasks.sprint_must_be_planned", id)
 	}
 	if s, ok := b.ActiveSprint(); ok {
-		return fmt.Errorf("já existe sprint ativa: %s", s.ID)
+		return i18n.Err("tasks.active_sprint_exists", s.ID)
 	}
 	b.Sprints[i].Status = Active
 	b.Sprints[i].Started = &now
@@ -225,7 +244,7 @@ func (b *Board) validSprint(id string) error {
 		return e
 	}
 	if b.Sprints[i].Status == Closed {
-		return fmt.Errorf("sprint %s está fechada", id)
+		return i18n.Err("tasks.sprint_closed", id)
 	}
 	return nil
 }
@@ -235,10 +254,10 @@ func (b *Board) CloseSprint(id string, retro []string, carryTo string, now time.
 		return e
 	}
 	if b.Sprints[i].Status != Active {
-		return fmt.Errorf("sprint %s precisa estar ativa", id)
+		return i18n.Err("tasks.sprint_must_be_active", id)
 	}
 	if carryTo == id {
-		return fmt.Errorf("destino não pode ser a própria sprint")
+		return i18n.Err("tasks.same_sprint")
 	}
 	if e = b.validSprint(carryTo); e != nil {
 		return e
@@ -264,13 +283,13 @@ type NewTask struct {
 
 func validPriority(p Priority) error {
 	if p != Normal && p != High {
-		return fmt.Errorf("prioridade inválida: %s", p)
+		return i18n.Err("tasks.invalid_priority", p)
 	}
 	return nil
 }
 func (b *Board) AddTask(n NewTask, by string, now time.Time) (Task, error) {
 	if strings.TrimSpace(n.Title) == "" {
-		return Task{}, fmt.Errorf("título da tarefa é obrigatório")
+		return Task{}, i18n.Err("tasks.title_required")
 	}
 	if e := b.validSprint(n.Sprint); e != nil {
 		return Task{}, e
@@ -292,12 +311,15 @@ func (b *Board) AddTask(n NewTask, by string, now time.Time) (Task, error) {
 	if n.Proposed {
 		t.Status = Proposed
 	}
-	record(&t, by, "criada", now)
+	record(&t, by, "tasks.event.created", now)
 	b.Tasks = append(b.Tasks, t)
 	return cloneTask(t), nil
 }
 func cloneTask(t Task) Task {
 	t.History = append([]Event(nil), t.History...)
+	for i := range t.History {
+		t.History[i].Args = append([]string(nil), t.History[i].Args...)
+	}
 	t.Verdicts = append([]string(nil), t.Verdicts...)
 	return t
 }
@@ -307,7 +329,7 @@ func (b *Board) taskIndex(id string) (int, error) {
 			return i, nil
 		}
 	}
-	return -1, fmt.Errorf("tarefa %s não existe", id)
+	return -1, i18n.Err("tasks.not_found", id)
 }
 func (b *Board) Task(id string) (Task, bool) {
 	i, e := b.taskIndex(id)
@@ -316,14 +338,14 @@ func (b *Board) Task(id string) (Task, bool) {
 	}
 	return cloneTask(b.Tasks[i]), true
 }
-func record(t *Task, by, what string, now time.Time) {
+func record(t *Task, by, key string, now time.Time, args ...string) {
 	t.Updated = now
-	t.History = append(t.History, Event{At: now, By: by, What: what})
+	t.History = append(t.History, Event{At: now, By: by, Key: key, Args: append([]string(nil), args...), What: i18n.TL(i18n.EN, key, eventArgs(args)...)})
 	if len(t.History) > historyLimit {
 		t.History = append([]Event(nil), t.History[len(t.History)-historyLimit:]...)
 	}
 }
-func (b *Board) mutate(id, by string, now time.Time, fn func(*Task) (string, error)) error {
+func (b *Board) mutate(id, by string, now time.Time, fn func(*Task) (Event, error)) error {
 	i, e := b.taskIndex(id)
 	if e != nil {
 		return e
@@ -333,7 +355,7 @@ func (b *Board) mutate(id, by string, now time.Time, fn func(*Task) (string, err
 	if e != nil {
 		return e
 	}
-	record(&t, by, what, now)
+	record(&t, by, what.Key, now, what.Args...)
 	b.Tasks[i] = t
 	return nil
 }
@@ -345,18 +367,18 @@ func require(t *Task, states ...Status) error {
 			}
 		}
 	}
-	return fmt.Errorf("tarefa %s não permite esta operação no estado atual", t.ID)
+	return i18n.Err("tasks.invalid_state", t.ID)
 }
 func (b *Board) UpdateTask(t Task, by string, now time.Time) error {
-	return b.mutate(t.ID, by, now, func(old *Task) (string, error) {
+	return b.mutate(t.ID, by, now, func(old *Task) (Event, error) {
 		if strings.TrimSpace(t.Title) == "" {
-			return "", fmt.Errorf("título da tarefa é obrigatório")
+			return Event{}, i18n.Err("tasks.title_required")
 		}
 		if e := validPriority(t.Priority); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		if e := b.validSprint(t.Sprint); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		old.Title = t.Title
 		old.Done = t.Done
@@ -364,121 +386,122 @@ func (b *Board) UpdateTask(t Task, by string, now time.Time) error {
 		old.Reviewer = t.Reviewer
 		old.Sprint = t.Sprint
 		old.Priority = t.Priority
-		return "editada", nil
+		return Event{Key: "tasks.event.edited"}, nil
 	})
 }
 func (b *Board) Approve(id, by string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if e := require(t, Proposed); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		t.Status = Ready
-		return "aprovada", nil
+		return Event{Key: "tasks.event.approved"}, nil
 	})
 }
 func (b *Board) Start(id, by string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if e := require(t, Ready, InProgress); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		t.Approved = false
 		t.Status = InProgress
 		t.Question = ""
-		return "começou", nil
+		return Event{Key: "tasks.event.started"}, nil
 	})
 }
 func (b *Board) Ask(id, by, question string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if e := require(t, Proposed, Ready, InProgress, Review); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		if strings.TrimSpace(question) == "" {
-			return "", fmt.Errorf("pergunta é obrigatória")
+			return Event{}, i18n.Err("tasks.question_required")
 		}
 		t.Question = question
-		return "pergunta: " + question, nil
+		return Event{Key: "tasks.event.question", Args: []string{question}}, nil
 	})
 }
 func (b *Board) Answer(id, by, answer string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if e := require(t, Proposed, Ready, InProgress, Review); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		if !t.Blocked() {
-			return "", fmt.Errorf("tarefa %s não tem pergunta pendente", id)
+			return Event{}, i18n.Err("tasks.no_pending_question", id)
 		}
 		t.Question = ""
-		return "resposta: " + answer, nil
+		return Event{Key: "tasks.event.answer", Args: []string{answer}}, nil
 	})
 }
 func (b *Board) Submit(id, by, summary string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if e := require(t, InProgress); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		t.Status = Review
 		t.Summary = summary
-		return "enviada para revisão", nil
+		return Event{Key: "tasks.event.submitted"}, nil
 	})
 }
 func (b *Board) Review(id, by string, approve bool, note string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if e := require(t, Review); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		verdict := "changes"
-		what := "revisão: alterações solicitadas"
+		what := Event{Key: "tasks.event.review_changes"}
 		t.Approved = false
 		t.Status = InProgress
 		t.Question = ""
 		if approve {
 			verdict = "approve"
-			what = "revisão: aprovada"
+			what = Event{Key: "tasks.event.review_approved"}
 			t.Status = Done
 			if t.Branch != "" {
 				t.Status = Review
 				t.Approved = true
-				what = "revisão: aprovada; falta o merge"
+				what = Event{Key: "tasks.event.review_merge_pending"}
 			}
 		}
 		t.Verdicts = append(t.Verdicts, by+":"+verdict)
 		if note != "" {
-			what += ": " + note
+			what.Key += "_note"
+			what.Args = []string{note}
 		}
 		return what, nil
 	})
 }
 func (b *Board) Delegate(id, to, by string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if e := require(t, Proposed, Ready, InProgress, Review); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		t.Assignee = to
-		return "delegada para " + to, nil
+		return Event{Key: "tasks.event.delegated", Args: []string{to}}, nil
 	})
 }
 func (b *Board) Archive(id, by string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) { t.Archived = true; return "arquivada", nil })
+	return b.mutate(id, by, now, func(t *Task) (Event, error) { t.Archived = true; return Event{Key: "tasks.event.archived"}, nil })
 }
 func (b *Board) Reopen(id, by, reason string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if t.Status != Done {
-			return "", fmt.Errorf("somente tarefa concluída pode ser reaberta")
+			return Event{}, i18n.Err("tasks.reopen_requires_done")
 		}
 		t.Status = Ready
 		t.Archived = false
 		t.Approved = false
 		t.Verdicts = nil
-		return "reaberta: " + reason, nil
+		return Event{Key: "tasks.event.reopened", Args: []string{reason}}, nil
 	})
 }
 func (b *Board) SetPriority(id string, p Priority, by string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if e := validPriority(p); e != nil {
-			return "", e
+			return Event{}, e
 		}
 		t.Priority = p
-		return "prioridade alterada", nil
+		return Event{Key: "tasks.event.priority_changed"}, nil
 	})
 }
 
@@ -538,25 +561,25 @@ func (b *Board) SetGit(id, branch, pr, by string, now time.Time) error {
 	t := &b.Tasks[i]
 	if branch != "" && branch != t.Branch {
 		t.Branch = branch
-		record(t, by, "branch "+branch, now)
+		record(t, by, "tasks.event.branch", now, branch)
 	}
 	if pr != "" && pr != t.PR {
 		t.PR = pr
-		record(t, by, "PR "+pr, now)
+		record(t, by, "tasks.event.pr", now, pr)
 	}
 	return nil
 }
 
 // Merged completes an approved task after its merge.
 func (b *Board) Merged(id, by string, now time.Time) error {
-	return b.mutate(id, by, now, func(t *Task) (string, error) {
+	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if err := require(t, Review); err != nil {
-			return "", err
+			return Event{}, err
 		}
 		if !t.Approved {
-			return "", fmt.Errorf("tarefa %s precisa estar aprovada", id)
+			return Event{}, i18n.Err("tasks.approval_required", id)
 		}
 		t.Status = Done
-		return "merge feito", nil
+		return Event{Key: "tasks.event.merged"}, nil
 	})
 }

@@ -2,7 +2,7 @@ package clients
 
 import (
 	"context"
-	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -88,11 +88,11 @@ func LatestNpm(ctx context.Context, pkg string) (string, error) {
 	hideConsole(cmd)
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("npm view %s version: %w", pkg, err)
+		return "", i18n.Err("clients.npm_version", pkg, err)
 	}
 	version := ParseVersion(string(out))
 	if version == "" {
-		return "", fmt.Errorf("npm view %s version: no version in %q", pkg, strings.TrimSpace(string(out)))
+		return "", i18n.Err("clients.npm_version_missing", pkg, strings.TrimSpace(string(out)))
 	}
 	return version, nil
 }

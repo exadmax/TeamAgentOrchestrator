@@ -3,7 +3,7 @@ package gitflow
 
 import (
 	"context"
-	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/i18n"
 	"net/url"
 	"os"
 	"os/exec"
@@ -24,7 +24,7 @@ func DefaultExec(ctx context.Context, dir, name string, args ...string) (string,
 	out, err := cmd.CombinedOutput()
 	result := strings.TrimSpace(string(out))
 	if err != nil {
-		return result, fmt.Errorf("falha ao executar %s: %w: %s", name, err, result)
+		return result, i18n.Err("gitflow.command_failed", name, err, result)
 	}
 	return result, nil
 }
@@ -151,7 +151,7 @@ func (r *Repo) exclude(common string) error {
 	path := filepath.Join(common, "info", "exclude")
 	data, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("não foi possível ler exclusões: %w", err)
+		return i18n.Err("gitflow.read_excludes", err)
 	}
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.TrimSpace(line) == ".tao/" {
@@ -159,14 +159,14 @@ func (r *Repo) exclude(common string) error {
 		}
 	}
 	if err = os.MkdirAll(filepath.Dir(path), directoryMode); err != nil {
-		return fmt.Errorf("não foi possível criar exclusões: %w", err)
+		return i18n.Err("gitflow.create_excludes", err)
 	}
 	if len(data) > 0 && data[len(data)-1] != '\n' {
 		data = append(data, '\n')
 	}
 	data = append(data, []byte(".tao/\n")...)
 	if err = os.WriteFile(path, data, 0644); err != nil {
-		return fmt.Errorf("não foi possível salvar exclusões: %w", err)
+		return i18n.Err("gitflow.save_excludes", err)
 	}
 	return nil
 }
@@ -188,12 +188,12 @@ func (r *Repo) Ensure(ctx context.Context, taskID, branch string) (string, error
 		if e == nil && te == nil && samePath(common, other) && samePath(path, top) {
 			return path, nil
 		}
-		return "", fmt.Errorf("a pasta da tarefa não pertence a este repositório")
+		return "", i18n.Err("gitflow.foreign_task")
 	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("não foi possível acessar a tarefa: %w", err)
+		return "", i18n.Err("gitflow.access_task", err)
 	}
 	if err = os.MkdirAll(filepath.Dir(path), directoryMode); err != nil {
-		return "", fmt.Errorf("não foi possível criar a pasta da tarefa: %w", err)
+		return "", i18n.Err("gitflow.create_task_dir", err)
 	}
 	args := []string{"worktree", "add", path, branch}
 	if _, e := r.git(ctx, r.Dir, "show-ref", "--verify", "--quiet", "refs/heads/"+branch); e != nil {
@@ -236,7 +236,7 @@ func (r *Repo) Ahead(ctx context.Context, branch string) (int, error) {
 	}
 	count, err := strconv.Atoi(out)
 	if err != nil {
-		return 0, fmt.Errorf("contagem de commits inválida: %w", err)
+		return 0, i18n.Err("gitflow.invalid_commit_count", err)
 	}
 	return count, nil
 }
@@ -253,23 +253,23 @@ func validURL(s string) bool {
 }
 func (r *Repo) OpenPR(ctx context.Context, branch, title, body string) (string, error) {
 	if !r.HasGh() {
-		return "", fmt.Errorf("gh não encontrado")
+		return "", i18n.Err("gitflow.gh_missing")
 	}
 	if out, err := r.run(ctx, r.Dir, "gh", "pr", "view", branch, "--json", "url", "-q", ".url"); err == nil && validURL(strings.TrimSpace(out)) {
 		return strings.TrimSpace(out), nil
 	}
 	f, err := os.CreateTemp("", "tao-pr-*.md")
 	if err != nil {
-		return "", fmt.Errorf("não foi possível criar o texto do PR: %w", err)
+		return "", i18n.Err("gitflow.create_pr_text", err)
 	}
 	defer os.Remove(f.Name())
 	_, writeErr := f.WriteString(body)
 	closeErr := f.Close()
 	if writeErr != nil {
-		return "", fmt.Errorf("não foi possível salvar o texto do PR: %w", writeErr)
+		return "", i18n.Err("gitflow.save_pr_text", writeErr)
 	}
 	if closeErr != nil {
-		return "", fmt.Errorf("não foi possível fechar o texto do PR: %w", closeErr)
+		return "", i18n.Err("gitflow.close_pr_text", closeErr)
 	}
 	out, err := r.run(ctx, r.Dir, "gh", "pr", "create", "--base", r.base(ctx), "--head", branch, "--title", title, "--body-file", f.Name())
 	if err != nil {
@@ -278,7 +278,7 @@ func (r *Repo) OpenPR(ctx context.Context, branch, title, body string) (string, 
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	result := strings.TrimSpace(lines[len(lines)-1])
 	if !validURL(result) {
-		return "", fmt.Errorf("URL do PR não encontrada")
+		return "", i18n.Err("gitflow.pr_url_missing")
 	}
 	return result, nil
 }
@@ -321,7 +321,7 @@ func (r *Repo) Merge(ctx context.Context, taskID, branch, prURL, message string)
 		}
 	} else {
 		if !r.cleanBase(ctx, base) {
-			return fmt.Errorf("a pasta do projeto precisa estar na %s e sem alterações para o merge local", base)
+			return i18n.Err("gitflow.local_merge_requires_clean_base", base)
 		}
 		if _, err := r.git(ctx, r.Dir, "merge", "--no-ff", "-m", message, branch); err != nil {
 			return err

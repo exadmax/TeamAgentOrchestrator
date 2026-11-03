@@ -1,3 +1,4 @@
+import { t as tr, locale } from './i18n/index.js';
 // Small DOM helpers and the Win95 building blocks shared by every screen.
 import sheet from './assets/ui-sheet.png';
 
@@ -41,12 +42,13 @@ export const sheetUrl = sheet;
 
 export const face = (id, size = 48) => h('img.face', { src: faceUrl(id), width: size, height: size, alt: '' });
 export const emblem = (e, size = 20) => h('img.face', { src: emblemUrl(e), width: size, height: Math.round(size * 46 / 56), alt: '' });
-export const dot = (status) => h(`span.dot.${status || 'ocioso'}`, { title: status });
+export const dot = (status) => h(`span.dot.${status || 'ocioso'}`, { title: STATUS_LABEL[status || 'ocioso'] });
 export const clientTag = (name, color) => h('span.tag', { style: { background: color || '#555' } }, (name || '?').split(' ')[0].toLowerCase());
 
-export const STATUS_LABEL = { ativo: 'Ativo', ocioso: 'Ocioso', erro: 'Erro', pausado: 'Pausado' };
-export const fmt = (n) => Math.round(n || 0).toLocaleString('pt-BR');
-export const hhmm = (iso) => (iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
+export const STATUS_LABEL = Object.fromEntries(['ativo', 'ocioso', 'erro', 'pausado'].map((code) => [code, () => tr(`agentstatus.${code}`)]));
+for (const code of Object.keys(STATUS_LABEL)) Object.defineProperty(STATUS_LABEL, code, { get: STATUS_LABEL[code] });
+export const fmt = (n) => Math.round(n || 0).toLocaleString(locale());
+export const hhmm = (iso) => (iso ? new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) : '');
 
 export function panel(title, body, opts = {}) {
   return h('div.panel.raised', { style: opts.style },
@@ -75,14 +77,14 @@ export function dialog(title, build, { width } = {}) {
 export function alertBox(text, title = 'TeamAgent') {
   return dialog(title, (close) => [
     h('div.dialog-body.row', { style: { gap: '12px' } }, icon('alert', 24), h('div', { style: { whiteSpace: 'pre-wrap', maxWidth: '420px' } }, text)),
-    h('div.dialog-btns', h('button.btn.default', { onclick: () => close() }, 'OK')),
+    h('div.dialog-btns', h('button.btn.default', { onclick: () => close() }, tr('common.ok'))),
   ]);
 }
 
-export function confirmBox(text, title = 'Confirmar') {
+export function confirmBox(text, title = tr('common.confirm')) {
   return dialog(title, (close) => [
     h('div.dialog-body.row', { style: { gap: '12px' } }, icon('help', 24), h('div', text)),
-    h('div.dialog-btns', h('button.btn.default', { onclick: () => close(true) }, 'Sim'), h('button.btn', { onclick: () => close(false) }, 'Não')),
+    h('div.dialog-btns', h('button.btn.default', { onclick: () => close(true) }, tr('common.yes')), h('button.btn', { onclick: () => close(false) }, tr('common.no'))),
   ]);
 }
 
@@ -95,4 +97,18 @@ export function toast(text) {
   toastTimer = setTimeout(() => el.remove(), 3500);
 }
 
-export const errText = (e) => String(e?.message || e || 'erro');
+export const errText = (e) => String(e?.message || e || tr('common.error_fallback'));
+
+export const modelLabel = (model) => !model || model === 'padrão' ? tr('models.default_model') : model;
+export const originLabel = (origin) => tr(origin?.startsWith('agent:') ? 'task.origin_agent'
+  : origin?.startsWith('import:') || origin?.startsWith('importado de ') ? 'task.origin_card' : 'task.origin_manual');
+export function originDetail(origin) {
+  if (origin?.startsWith('agent:')) return tr('task.created_by', { p1: origin.slice(6) });
+  if (origin?.startsWith('import:')) return tr('task.imported_from', { file: origin.slice(7) });
+  if (origin?.startsWith('importado de ')) return tr('task.imported_from', { file: origin.slice(13) });
+  return originLabel(origin);
+}
+
+export function translatedNodes(key, params) {
+  return tr(key).split(/(\{\w+\})/g).map((part) => /^\{\w+\}$/.test(part) ? params[part.slice(1, -1)] ?? part : part);
+}

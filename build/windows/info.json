@@ -6,10 +6,10 @@
 		"0409": {
 			"ProductVersion": "0.3.0",
 			"CompanyName": "Diogo Góes Zanetti",
-			"FileDescription": "Orquestrador de times de agentes de IA",
+			"FileDescription": "Orchestrator for teams of AI coding agents",
 			"LegalCopyright": "(c) 2026, Diogo Góes Zanetti",
-			"ProductName": "TeamAgent Orquestrador",
-			"Comments": "TeamAgent Orquestrador"
+			"ProductName": "TeamAgent Orchestrator",
+			"Comments": "TeamAgent Orchestrator"
 		}
 	}
 }
