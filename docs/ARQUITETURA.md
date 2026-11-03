@@ -17,7 +17,8 @@
 │ internal/runner   processo do CLI, timeout, log
 │ internal/stream   JSON do CLI → Event comum
 │ internal/failure  classificação de erros, esperas
-│ internal/store    .tao/: sessões, relógios, trocas
+│ internal/tasks    tarefas e sprints (tao.tasks.json)
+│ internal/store    .tao/: sessões, relógios, trocas, etapas
 └────────────────────────────────────────────────┘
           │ os/exec
           ▼
@@ -37,7 +38,7 @@
 | **Sessão** | Uma execução de um agente: comando, eventos, uso de tokens, resultado | `<projeto>/.tao/sessions.jsonl` e `.tao/logs/` |
 | **Relógio** | Quando um modelo sem cota volta a funcionar | `.tao/clocks.json` |
 | **Troca** | Modelo substituto (temporário ou permanente) por agente/tarefa | `.tao/models.json` |
-| **Tarefa / Sprint** | Trabalho atribuído a agentes (marco 2) | `.tao/tasks/` |
+| **Tarefa / Sprint** | Atividades com responsável, revisor, etapas e histórico | `<projeto>/tao.tasks.json` (versionável) |
 
 ## Fluxo de uma sessão
 
@@ -50,6 +51,24 @@
 5. No fim, `failure.Classify(exit, tail)` decide se houve erro (cota, auth, modelo,
    contexto, recusa, launch, transitório, timeout). Cota e esperas viram relógio em `store`.
 6. A sessão é registrada em `sessions.jsonl` com uso de tokens, que alimenta a aba Tokens.
+
+## Fluxo de uma tarefa
+
+```
+proposta ──Aprovar──▶ a fazer ──Rodar──▶ fazendo ──agente termina──▶ em revisão ──Revisar──▶ concluída
+   (gerada por agente)                      │  ▲                         │
+                                            │  └── MUDANÇAS: ... ◀───────┘ (revisor de outro cliente)
+                                            └── termina em pergunta ou falha ─▶ bloqueada (Mesa: Responder/Delegar)
+```
+
+- **Rodar:** o responsável recebe título, critério de pronto, resumo anterior, histórico recente e a
+  resposta do Diogo (se houver). Se a última linha for uma pergunta, a tarefa bloqueia.
+- **Revisar:** o revisor da tarefa ou, sem ele, um agente ativo de outro cliente (prefere o emblema
+  `revisao`). Ele responde `APROVADO` ou `MUDANÇAS: ...`.
+- **Gerar com Agente:** o agente devolve um array JSON de atividades; elas entram como propostas.
+- Cada sessão tem tempo máximo de 45 min (agente em laço) além do timeout por silêncio de 300 s.
+- Toda escrita de estado é atômica e repete a troca do arquivo por até meio segundo: no Windows a
+  troca falha enquanto outro leitor está com o arquivo aberto (`internal/fsx`).
 
 ## Saída dos clientes (formato lido)
 
@@ -71,4 +90,4 @@ Amostras reais ficam em `testdata/stream/` e são a base dos testes de `internal
 | `run_session` (Popen, heartbeat, `IDLE_KILL`) | `internal/runner` |
 | `owners.json → roles` | `internal/team` |
 | menus de terminal | `frontend/` (Win95) |
-| `tools/cards/card.py` | marco 2 (`internal/tasks`) |
+| `tools/cards/card.py` | `internal/tasks` (status iguais: proposed, ready, in_progress, review, done) |

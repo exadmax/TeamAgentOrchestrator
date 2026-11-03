@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/exadmax/TeamAgentOrchestrator/internal/fsx"
 	"os"
 	"path/filepath"
 	"sort"
@@ -60,7 +61,7 @@ func writeAtomic(path string, b []byte) error {
 	if e = f.Close(); e != nil {
 		return e
 	}
-	return os.Rename(f.Name(), path)
+	return fsx.Replace(f.Name(), path)
 }
 func writeJSON(path string, v any) error {
 	b, e := json.MarshalIndent(v, "", "  ")

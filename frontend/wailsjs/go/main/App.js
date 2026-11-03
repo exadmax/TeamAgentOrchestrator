@@ -6,6 +6,26 @@ export function AddAgent(arg1) {
   return window['go']['main']['App']['AddAgent'](arg1);
 }
 
+export function AddTask(arg1) {
+  return window['go']['main']['App']['AddTask'](arg1);
+}
+
+export function AnswerTask(arg1, arg2) {
+  return window['go']['main']['App']['AnswerTask'](arg1, arg2);
+}
+
+export function ApproveTask(arg1) {
+  return window['go']['main']['App']['ApproveTask'](arg1);
+}
+
+export function ArchiveTask(arg1) {
+  return window['go']['main']['App']['ArchiveTask'](arg1);
+}
+
+export function Board() {
+  return window['go']['main']['App']['Board']();
+}
+
 export function CheckUpdates() {
   return window['go']['main']['App']['CheckUpdates']();
 }
@@ -14,24 +34,60 @@ export function ChooseProject() {
   return window['go']['main']['App']['ChooseProject']();
 }
 
+export function CloseSprint(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CloseSprint'](arg1, arg2, arg3);
+}
+
 export function Console(arg1) {
   return window['go']['main']['App']['Console'](arg1);
+}
+
+export function DelegateTask(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DelegateTask'](arg1, arg2, arg3);
 }
 
 export function DetectClients() {
   return window['go']['main']['App']['DetectClients']();
 }
 
+export function GenerateTasks(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GenerateTasks'](arg1, arg2, arg3);
+}
+
+export function NewSprint(arg1, arg2) {
+  return window['go']['main']['App']['NewSprint'](arg1, arg2);
+}
+
 export function RemoveAgent(arg1) {
   return window['go']['main']['App']['RemoveAgent'](arg1);
+}
+
+export function ReopenTask(arg1, arg2) {
+  return window['go']['main']['App']['ReopenTask'](arg1, arg2);
+}
+
+export function ReviewTask(arg1) {
+  return window['go']['main']['App']['ReviewTask'](arg1);
 }
 
 export function RunAgent(arg1, arg2) {
   return window['go']['main']['App']['RunAgent'](arg1, arg2);
 }
 
+export function RunTask(arg1) {
+  return window['go']['main']['App']['RunTask'](arg1);
+}
+
+export function SetTaskPriority(arg1, arg2) {
+  return window['go']['main']['App']['SetTaskPriority'](arg1, arg2);
+}
+
 export function Snapshot() {
   return window['go']['main']['App']['Snapshot']();
+}
+
+export function StartSprint(arg1) {
+  return window['go']['main']['App']['StartSprint'](arg1);
 }
 
 export function StopAgent(arg1) {
@@ -52,4 +108,8 @@ export function Tokens(arg1) {
 
 export function UpdateAgent(arg1) {
   return window['go']['main']['App']['UpdateAgent'](arg1);
+}
+
+export function UpdateTask(arg1) {
+  return window['go']['main']['App']['UpdateTask'](arg1);
 }

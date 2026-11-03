@@ -110,8 +110,10 @@ func parseClaude(m map[string]any) []Event {
 	case "user":
 		for _, c := range arr(obj(m, "message"), "content") {
 			part, _ := c.(map[string]any)
+			// A failed tool call is part of the agent's work (it reads the error and moves on),
+			// not a failure of the CLI: it stays a tool event.
 			if str(part, "type") == "tool_result" && boolean(part, "is_error") {
-				return []Event{{Kind: Error, Text: clip(contentText(part["content"])), IsError: true}}
+				return []Event{{Kind: Tool, Tool: "erro da ferramenta", Text: clip(contentText(part["content"])), IsError: true}}
 			}
 		}
 	case "result":

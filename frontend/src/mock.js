@@ -54,7 +54,66 @@ function fakeRun(id, prompt) {
   }, 450 * (i + 1)));
 }
 
+// ---- task board (mirrors internal/tasks closely enough to design the screens)
+const LABEL = { proposed: 'Proposta', ready: 'A fazer', in_progress: 'Fazendo', review: 'Em revisão', done: 'Concluída' };
+const board = { sprints: [], tasks: [] };
+const taskRun = {};
+const ts = () => new Date().toISOString();
+const findTask = (id) => board.tasks.find((t) => t.id === id);
+const hist = (t, by, what) => { t.history = [...(t.history || []), { at: ts(), by, what }].slice(-50); t.updated = ts(); };
+const progress = (sid) => {
+  const ts_ = board.tasks.filter((t) => (t.sprint || '') === sid && !t.archived);
+  const done = ts_.filter((t) => t.status === 'done').length;
+  return { done, total: ts_.length, pct: ts_.length ? Math.round((done * 100) / ts_.length) : 0, blocked: ts_.filter((t) => t.question).map((t) => t.id) };
+};
+const boardView = () => ({
+  sprints: board.sprints.map((s) => ({ ...s, progress: progress(s.id) })),
+  active: board.sprints.find((s) => s.status === 'active')?.id || '',
+  backlog: progress(''),
+  tasks: board.tasks.map((t) => ({ ...t, status_label: LABEL[t.status], assignee_name: agents.find((a) => a.id === t.assignee)?.name || '', running: !!taskRun[t.id],
+    phases: ['start', 'work', 'review', 'verdict'].map((p) => ({ phase: p, status: t.phases?.[p] || '' })) })),
+});
+const changed = () => emit('board', boardView());
+const addTask = (n, by) => {
+  const id = `T${String(board.tasks.length + 1).padStart(3, '0')}`;
+  const t = { id, title: n.title, done: n.done || '', assignee: n.assignee || '', sprint: n.sprint || '', status: n.proposed ? 'proposed' : 'ready',
+    priority: n.priority || 'normal', origin: n.origin || 'manual', created: ts(), phases: {} };
+  hist(t, by, 'criada');
+  board.tasks.push(t);
+};
+const work = (id, after) => {
+  const t = findTask(id);
+  taskRun[id] = true; t.status = 'in_progress'; t.phases.start = 'ok'; t.phases.work = 'running'; changed();
+  fakeRun(t.assignee, `[${id}] ${t.title}`);
+  setTimeout(() => { delete taskRun[id]; after(t); changed(); }, 3000);
+};
+(function seed() {
+  board.sprints.push({ id: 'S1', title: 'Fundação', goal: 'Base do projeto em Go', status: 'closed', created: ts(), retro: ['ok'] },
+    { id: 'S2', title: 'Porte do núcleo', goal: 'Orquestrador rodando em Go com os 3 clientes', status: 'active', created: ts() });
+  [['Portar scheduler.py', 'portador'], ['Portar agents.py', 'portador'], ['Leitor de stream JSON dos clientes', 'engenheiro'],
+    ['Testes de paridade Python × Go', 'revisor']].forEach(([title, assignee]) => addTask({ title, assignee, sprint: 'S2', done: 'testes passando' }, 'diogo'));
+  board.tasks[0].status = 'in_progress'; board.tasks[0].question = 'Posso começar a portar o scheduler.py?'; board.tasks[0].priority = 'high';
+  board.tasks[2].status = 'review'; board.tasks[2].summary = 'stream.Parse cobre claude, codex e opencode';
+})();
+
 const handlers = {
+  Board: () => boardView(),
+  NewSprint: (title, goal) => { board.sprints.push({ id: `S${board.sprints.length + 1}`, title, goal, status: 'planned', created: ts() }); changed(); },
+  StartSprint: (id) => { if (board.sprints.some((s) => s.status === 'active')) throw new Error('já existe uma sprint ativa'); board.sprints.find((s) => s.id === id).status = 'active'; changed(); },
+  CloseSprint: (id, retro, carry) => { const s = board.sprints.find((x) => x.id === id); s.status = 'closed'; s.retro = retro;
+    board.tasks.filter((t) => t.sprint === id && t.status !== 'done').forEach((t) => { t.sprint = carry || ''; }); changed(); },
+  AddTask: (n) => { addTask(n, 'diogo'); changed(); },
+  UpdateTask: (t) => { Object.assign(findTask(t.id), t); hist(findTask(t.id), 'diogo', 'editada'); changed(); },
+  ApproveTask: (id) => { findTask(id).status = 'ready'; changed(); },
+  ArchiveTask: (id) => { findTask(id).archived = true; changed(); },
+  ReopenTask: (id) => { Object.assign(findTask(id), { status: 'ready', verdicts: [] }); changed(); },
+  SetTaskPriority: (id, high) => { findTask(id).priority = high ? 'high' : 'normal'; changed(); },
+  RunTask: (id) => work(id, (t) => { t.status = 'review'; t.summary = 'feito (simulado)'; t.phases.work = 'ok'; hist(t, t.assignee, 'enviada para revisão'); }),
+  AnswerTask: (id, ans) => { const t = findTask(id); hist(t, 'diogo', `resposta: ${ans}`); t.question = ''; handlers.RunTask(id); },
+  DelegateTask: (id, to) => { const t = findTask(id); t.assignee = to; t.question = ''; hist(t, 'diogo', `delegada para ${to}`); handlers.RunTask(id); },
+  ReviewTask: (id) => work(id, (t) => { t.status = 'done'; t.phases.review = 'ok'; t.phases.verdict = 'ok'; t.verdicts = ['revisor:approve']; hist(t, 'revisor', 'revisão: aprovada'); }),
+  GenerateTasks: (agent, objective, sprint) => { fakeRun(agent, `planejar: ${objective}`);
+    setTimeout(() => { ['Mapear o módulo', 'Escrever os testes', 'Portar e revisar'].forEach((title) => addTask({ title: `${title}: ${objective}`, sprint, assignee: 'engenheiro', origin: `agent:${agent}`, proposed: true }, agent)); changed(); }, 2500); },
   Snapshot: () => snapshot(),
   DetectClients: () => catalog,
   CheckUpdates: () => catalog.map((c) => ({ ...c, latest: c.version })),

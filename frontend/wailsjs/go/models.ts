@@ -125,6 +125,179 @@ export namespace main {
 	        this.command = source["command"];
 	    }
 	}
+	export class PhaseView {
+	    phase: string;
+	    status: string;
+	    agent?: string;
+	    attempts?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PhaseView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.phase = source["phase"];
+	        this.status = source["status"];
+	        this.agent = source["agent"];
+	        this.attempts = source["attempts"];
+	    }
+	}
+	export class TaskView {
+	    id: string;
+	    title: string;
+	    done: string;
+	    assignee: string;
+	    reviewer?: string;
+	    sprint?: string;
+	    status: string;
+	    priority: string;
+	    origin: string;
+	    question?: string;
+	    summary?: string;
+	    verdicts?: string[];
+	    archived?: boolean;
+	    // Go type: time
+	    created: any;
+	    // Go type: time
+	    updated: any;
+	    history?: tasks.Event[];
+	    status_label: string;
+	    assignee_name: string;
+	    running: boolean;
+	    phases: PhaseView[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TaskView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.done = source["done"];
+	        this.assignee = source["assignee"];
+	        this.reviewer = source["reviewer"];
+	        this.sprint = source["sprint"];
+	        this.status = source["status"];
+	        this.priority = source["priority"];
+	        this.origin = source["origin"];
+	        this.question = source["question"];
+	        this.summary = source["summary"];
+	        this.verdicts = source["verdicts"];
+	        this.archived = source["archived"];
+	        this.created = this.convertValues(source["created"], null);
+	        this.updated = this.convertValues(source["updated"], null);
+	        this.history = this.convertValues(source["history"], tasks.Event);
+	        this.status_label = source["status_label"];
+	        this.assignee_name = source["assignee_name"];
+	        this.running = source["running"];
+	        this.phases = this.convertValues(source["phases"], PhaseView);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SprintView {
+	    id: string;
+	    title: string;
+	    goal: string;
+	    status: string;
+	    // Go type: time
+	    created: any;
+	    // Go type: time
+	    started?: any;
+	    // Go type: time
+	    closed?: any;
+	    retro?: string[];
+	    progress: tasks.Progress;
+	
+	    static createFrom(source: any = {}) {
+	        return new SprintView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.goal = source["goal"];
+	        this.status = source["status"];
+	        this.created = this.convertValues(source["created"], null);
+	        this.started = this.convertValues(source["started"], null);
+	        this.closed = this.convertValues(source["closed"], null);
+	        this.retro = source["retro"];
+	        this.progress = this.convertValues(source["progress"], tasks.Progress);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class BoardView {
+	    sprints: SprintView[];
+	    tasks: TaskView[];
+	    active: string;
+	    backlog: tasks.Progress;
+	
+	    static createFrom(source: any = {}) {
+	        return new BoardView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sprints = this.convertValues(source["sprints"], SprintView);
+	        this.tasks = this.convertValues(source["tasks"], TaskView);
+	        this.active = source["active"];
+	        this.backlog = this.convertValues(source["backlog"], tasks.Progress);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Line {
 	    agent: string;
 	    // Go type: time
@@ -166,6 +339,7 @@ export namespace main {
 		    return a;
 		}
 	}
+	
 	export class Snapshot {
 	    project: string;
 	    dir: string;
@@ -210,6 +384,8 @@ export namespace main {
 		    return a;
 		}
 	}
+	
+	
 	export class TokenRow {
 	    agent: string;
 	    name: string;
@@ -273,6 +449,150 @@ export namespace store {
 	        this.recorded = this.convertValues(source["recorded"], null);
 	        this.reason = source["reason"];
 	        this.source = source["source"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace tasks {
+	
+	export class Event {
+	    // Go type: time
+	    at: any;
+	    by: string;
+	    what: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Event(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.at = this.convertValues(source["at"], null);
+	        this.by = source["by"];
+	        this.what = source["what"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NewTask {
+	    Title: string;
+	    Done: string;
+	    Assignee: string;
+	    Sprint: string;
+	    Origin: string;
+	    Priority: string;
+	    Proposed: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new NewTask(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Title = source["Title"];
+	        this.Done = source["Done"];
+	        this.Assignee = source["Assignee"];
+	        this.Sprint = source["Sprint"];
+	        this.Origin = source["Origin"];
+	        this.Priority = source["Priority"];
+	        this.Proposed = source["Proposed"];
+	    }
+	}
+	export class Progress {
+	    done: number;
+	    total: number;
+	    pct: number;
+	    blocked: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Progress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.done = source["done"];
+	        this.total = source["total"];
+	        this.pct = source["pct"];
+	        this.blocked = source["blocked"];
+	    }
+	}
+	export class Task {
+	    id: string;
+	    title: string;
+	    done: string;
+	    assignee: string;
+	    reviewer?: string;
+	    sprint?: string;
+	    status: string;
+	    priority: string;
+	    origin: string;
+	    question?: string;
+	    summary?: string;
+	    verdicts?: string[];
+	    archived?: boolean;
+	    // Go type: time
+	    created: any;
+	    // Go type: time
+	    updated: any;
+	    history?: Event[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Task(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.done = source["done"];
+	        this.assignee = source["assignee"];
+	        this.reviewer = source["reviewer"];
+	        this.sprint = source["sprint"];
+	        this.status = source["status"];
+	        this.priority = source["priority"];
+	        this.origin = source["origin"];
+	        this.question = source["question"];
+	        this.summary = source["summary"];
+	        this.verdicts = source["verdicts"];
+	        this.archived = source["archived"];
+	        this.created = this.convertValues(source["created"], null);
+	        this.updated = this.convertValues(source["updated"], null);
+	        this.history = this.convertValues(source["history"], Event);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
