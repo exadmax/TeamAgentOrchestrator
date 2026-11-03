@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=TeamAgent Orquestrador
+Comment=Orquestrador de times de agentes de IA
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/TeamAgent %u
+Terminal=false
+Type=Application
+Icon=TeamAgent
+Categories=Utility;
+StartupWMClass=TeamAgent
+
+ 

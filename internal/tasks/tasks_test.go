@@ -374,3 +374,96 @@ func TestParseGenerated(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestGitReviewAndMerge(t *testing.T) {
+	b := &Board{Tasks: []Task{{ID: "T001", Status: Review}}}
+	check(t, b.SetGit("T001", "feature/T001", "https://example.test/pr/1", "a", fixed))
+	task := b.Tasks[0]
+	if task.Branch != "feature/T001" || task.PR != "https://example.test/pr/1" || len(task.History) != 2 || task.History[0].What != "branch feature/T001" || task.History[1].What != "PR https://example.test/pr/1" {
+		t.Fatal(task)
+	}
+	before := cloneTask(task)
+	check(t, b.SetGit("T001", "", "", "a", fixed.Add(time.Hour)))
+	check(t, b.SetGit("T001", task.Branch, task.PR, "a", fixed.Add(time.Hour)))
+	if !reflect.DeepEqual(before, b.Tasks[0]) {
+		t.Fatal("unchanged references mutated task")
+	}
+	if b.Merged("T001", "a", fixed) == nil {
+		t.Fatal("merged without approval")
+	}
+	check(t, b.Review("T001", "r", true, "", fixed))
+	task = b.Tasks[0]
+	if task.Status != Review || !task.Approved || task.History[len(task.History)-1].What != "revisão: aprovada; falta o merge" {
+		t.Fatal(task)
+	}
+	check(t, b.Merged("T001", "a", fixed))
+	task = b.Tasks[0]
+	if task.Status != Done || task.History[len(task.History)-1].What != "merge feito" {
+		t.Fatal(task)
+	}
+	check(t, b.Reopen("T001", "a", "Refazer", fixed))
+	if b.Tasks[0].Approved {
+		t.Fatal("reopen kept approval")
+	}
+	b.Tasks[0].Approved = true
+	check(t, b.Start("T001", "a", fixed))
+	if b.Tasks[0].Approved {
+		t.Fatal("start kept approval")
+	}
+	b.Tasks[0].Status = Review
+	b.Tasks[0].Approved = true
+	check(t, b.Review("T001", "r", false, "Corrigir", fixed))
+	if b.Tasks[0].Approved || b.Tasks[0].Status != InProgress {
+		t.Fatal(b.Tasks[0])
+	}
+	check(t, b.SetGit("T001", "", "https://example.test/pr/2", "a", fixed))
+	if b.Tasks[0].Branch != "feature/T001" || b.Tasks[0].PR != "https://example.test/pr/2" {
+		t.Fatal(b.Tasks[0])
+	}
+	if b.SetGit("missing", "x", "", "a", fixed) == nil || b.Merged("missing", "a", fixed) == nil {
+		t.Fatal("missing id accepted")
+	}
+}
+
+func TestMergedRequiresReview(t *testing.T) {
+	for _, status := range Statuses {
+		for _, approved := range []bool{false, true} {
+			for _, archived := range []bool{false, true} {
+				b := &Board{Tasks: []Task{{ID: "T001", Status: status, Approved: approved, Archived: archived}}}
+				before := cloneTask(b.Tasks[0])
+				err := b.Merged("T001", "a", fixed)
+				want := status == Review && approved && !archived
+				if (err == nil) != want {
+					t.Fatalf("%s approved=%v archived=%v: %v", status, approved, archived, err)
+				}
+				if !want && !reflect.DeepEqual(before, b.Tasks[0]) {
+					t.Fatal("rejected merge mutated task")
+				}
+			}
+		}
+	}
+}
+
+func TestGitFieldsRoundTrip(t *testing.T) {
+	b := &Board{Tasks: []Task{{ID: "T001", Status: Review, Branch: "feature", PR: "https://example.test/pr/1", Approved: true}}}
+	dir := t.TempDir()
+	check(t, b.Save(dir))
+	got, err := Load(dir)
+	check(t, err)
+	if !reflect.DeepEqual(b, got) {
+		t.Fatal(got)
+	}
+}
+
+func TestGitFieldsOmittedWhenEmpty(t *testing.T) {
+	b := &Board{Tasks: []Task{{ID: "T001"}}}
+	dir := t.TempDir()
+	check(t, b.Save(dir))
+	data, err := os.ReadFile(filepath.Join(dir, FileName))
+	check(t, err)
+	for _, key := range []string{`"branch"`, `"pr"`, `"approved"`} {
+		if strings.Contains(string(data), key) {
+			t.Fatalf("empty field persisted: %s", data)
+		}
+	}
+}

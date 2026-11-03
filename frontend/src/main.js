@@ -1,5 +1,5 @@
 import './style.css';
-import { api, on } from './api.js';
+import { api, on, win } from './api.js';
 import { h, icon, dialog, alertBox, toast, errText } from './ui.js';
 import inicio from './views/inicio.js';
 import mesa from './views/mesa.js';
@@ -9,8 +9,9 @@ import tokens from './views/tokens.js';
 import novo from './views/novo.js';
 import clientes from './views/clientes.js';
 import consoleView from './views/console.js';
+import { modelsWindow, gitWindow, importCards } from './views/models.js';
 
-const VERSION = 'v0.1.0';
+const VERSION = 'v0.3.0';
 const TABS = [
   ['inicio', 'Início', inicio], ['mesa', 'Mesa do Agente', mesa], ['org', 'Organograma', org], ['sprints', 'Sprints', sprints],
   ['tokens', 'Tokens', tokens], ['novo', 'Novo Agente', novo], ['clientes', 'Clientes', clientes], ['console', 'Console', consoleView],
@@ -44,7 +45,7 @@ let page = null; // { el, update?(snap), line?(l) }
 const root = document.getElementById('app');
 const host = h('div.page-host');
 const tabsEl = h('div.tabs');
-const status = { clients: h('div'), agents: h('div'), tasks: h('div.grow'), version: h('div', VERSION) };
+const status = { clients: h('div'), agents: h('div'), tasks: h('div.grow'), clocks: h('div', { style: { cursor: 'pointer' }, title: 'Modelos e cotas', onclick: () => modelsWindow() }), version: h('div', VERSION) };
 const titleEl = h('span.title');
 
 function setSnap(snap) {
@@ -55,6 +56,8 @@ function setSnap(snap) {
   const active = (snap.agents || []).filter((a) => a.status === 'ativo').length;
   status.clients.replaceChildren(h('span.dot', { style: { background: installed ? 'var(--ok)' : 'var(--err)' } }), `Conectado · ${installed} clientes CLI`);
   status.agents.replaceChildren(`Agentes: ${snap.agents?.length || 0} (${active} ativos)`);
+  const clocks = snap.clocks || [];
+  status.clocks.replaceChildren(clocks.length ? `⏳ ${clocks.length} modelo(s) sem cota` : 'Cotas: ok');
   drawTaskStatus();
   page?.update?.(snap);
 }
@@ -83,10 +86,12 @@ function renderPage() {
 // ---------------------------------------------------------------- menus
 const MENUS = [
   ['Arquivo', [['Abrir projeto…', () => ctx.call('ChooseProject').then(() => api.Board().then(setBoard))],
-    ['Recarregar', () => { ctx.call('Snapshot'); api.Board().then(setBoard); }], null, ['Sair', () => window.runtime?.Quit?.()]]],
+    ['Importar cartões (owners.json)…', () => importCards(ctx)],
+    ['Recarregar', () => { ctx.call('Snapshot'); api.Board().then(setBoard); }], null, ['Sair', () => win.quit()]]],
   ['Agentes', [['Novo agente…', () => ctx.go('novo')], ['Organograma', () => ctx.go('org')], ['Console', () => ctx.go('console')], null,
     ['Procurar clientes instalados', () => ctx.call('DetectClients').then(() => toast('Clientes atualizados.'))]]],
   ['Tarefas', [['Sprints', () => ctx.go('sprints')], ['Mesa do agente', () => ctx.go('mesa')]]],
+  ['Ferramentas', [['Modelos e cotas…', () => modelsWindow()], ['Fluxo git…', () => gitWindow(ctx)]]],
   ['Janela', [['Início', () => ctx.go('inicio')], ['Tokens', () => ctx.go('tokens')], ['Clientes', () => ctx.go('clientes')]]],
   ['Ajuda', [['Sobre o TeamAgent…', about]]],
 ];
@@ -129,18 +134,19 @@ function about() {
 // ---------------------------------------------------------------- window
 root.append(h('div.window.raised',
   h('div.titlebar', icon('app', 20), titleEl,
-    h('div.tb-btns', h('button.btn.tb-btn', { onclick: () => window.runtime?.WindowMinimise?.() }, '_'),
-      h('button.btn.tb-btn', { onclick: () => window.runtime?.WindowToggleMaximise?.() }, '□'),
-      h('button.btn.tb-btn', { onclick: () => window.runtime?.Quit?.() }, '✕'))),
+    h('div.tb-btns', h('button.btn.tb-btn', { onclick: () => win.minimise() }, '_'),
+      h('button.btn.tb-btn', { onclick: () => win.toggleMaximise() }, '□'),
+      h('button.btn.tb-btn', { onclick: () => win.quit() }, '✕'))),
   menubar(), toolbar(), tabsEl,
   h('div.raised', { style: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, margin: '0 2px' } }, host),
-  h('div.statusbar', status.clients, status.agents, status.tasks, status.version)));
+  h('div.statusbar', status.clients, status.agents, status.tasks, status.clocks, status.version)));
 
 on('snapshot', setSnap);
 on('clients', (clients) => setSnap({ ...ctx.snap, clients }));
 on('line', (l) => page?.line?.(l));
 on('idle', (e) => page?.idle?.(e));
 on('board', setBoard);
+on('models', () => ctx.call('Snapshot'));
 
 Promise.all([api.Snapshot(), api.Board()])
   .then(([s, b]) => { ctx.board = b; setSnap(s); renderPage(); })

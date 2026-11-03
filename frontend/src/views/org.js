@@ -48,6 +48,8 @@ export default function org(ctx) {
           field('Nível:', h('select.field', { onchange: set('tier') }, ctx.snap.tiers.map((t) => h('option', { value: t, selected: t === a.tier }, t)))),
           field('Modelo:', h('input.field', { value: a.model || '', placeholder: a.model_in_use || 'do nível', list: 'models', oninput: set('model') })), models,
           field('Superior:', h('select.field', { onchange: set('parent') }, h('option', { value: '' }, '—'), others.map((o) => h('option', { value: o.id, selected: o.id === a.parent }, o.name)))),
+          field('Reserva:', h('select.field', { title: 'Quem assume quando os modelos deste agente estiverem sem cota (com a troca automática ligada)', onchange: set('fallback') },
+            h('option', { value: '' }, '— nenhuma —'), others.map((o) => h('option', { value: o.id, selected: o.id === a.fallback }, `${o.name} (${o.client_name || o.client})`)))),
           field('Emblema:', h('div.row', emblem(a.emblem, 22), h('select.field.grow', { onchange: set('emblem') }, ctx.snap.emblems.map((e) => h('option', { value: e, selected: e === a.emblem }, e))))),
           field('Status:', h('div.row', dot(a.status), STATUS_LABEL[a.status]))),
         h('div', { style: { margin: '8px 0 3px' } }, 'Instruções do agente:'),

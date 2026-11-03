@@ -1,0 +1,10 @@
+{"version":1,"fallback_tool":"opencode",
+ "tools":{"claude":{"reviewer":"codex","tiers":{"barato":"haiku","medio":"sonnet","forte":"opus"}},
+ "codex":{"reviewer":"claude","tiers":{"barato":"gpt-6-luna","medio":"gpt-6.1-sol","forte":"gpt-6-astra"}},
+ "gemini":{"reviewer":"claude","tiers":{}},"opencode":{"reviewer":"claude","tiers":{}}},
+ "roles":{"produtor":{"tool":"claude","model":"forte","owns":["docs/tasks/"],"read":["docs/equipe/papeis/produtor.md"]},
+ "arquiteto":{"tool":"claude","model":"forte"},
+ "gameplay":{"tool":"codex","model":"medio"},
+ "guardiao-canon":{"tool":"gemini","model":"barato"},
+ "manutencao":{"tool":"opencode","model":"barato"},
+ "revisor":{"tool":"claude","model":"medio"}}}

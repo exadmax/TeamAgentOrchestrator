@@ -29,11 +29,20 @@ Responder, Delegar e Arquivar agem sobre ela; o estado das etapas fica em `.tao/
 | `internal/tasks` | Codex |
 | `internal/fsx`, `app_tasks.go`, telas Sprints/Mesa/tarefa, correções do runner | Claude Code |
 
-## M3 — Fluxo git e resiliência
+## M3 — Fluxo git e resiliência (concluído)
 
-Começar/submeter/revisar/merge com branch e PR (`gh`), troca de modelo e agente reserva com
-relógios visíveis, revisor sempre de outro cliente, importador do JinChronicles
-(`owners.json` + `docs/tasks`).
+Pronto quando: cada tarefa roda numa branch própria em `.tao/worktrees/<id>`; o trabalho vira commit, a
+branch é enviada e o PR é aberto com `gh` (ou o merge é local, sem GitHub); a aprovação deixa a tarefa
+esperando o merge, feito por um botão; um modelo sem cota troca sozinho para outro modelo do cliente ou
+para o agente reserva (com a troca automática ligada), e os relógios aparecem em Ferramentas → Modelos e
+cotas; o revisor é sempre de outro cliente que não o de quem fez; Arquivo → Importar cartões traz os papéis
+e os cartões do JinChronicles; a interface roda no Wails v3.
+
+| Pacote | Dono no M3 |
+|---|---|
+| `internal/gitflow` | Codex |
+| `internal/importer`, campos git e merge em `internal/tasks` | Codex |
+| `app_git.go`, `app_models.go`, migração para o Wails v3, telas, `docs/index.html` | Claude Code |
 
 ## M4 — Distribuição
 

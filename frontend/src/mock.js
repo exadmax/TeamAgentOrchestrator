@@ -28,7 +28,7 @@ const view = (a) => {
     last_line: lines.at(-1)?.text || '', command: `${c.exe} … ${c.model_flag} ${model} "<prompt>"` };
 };
 const snapshot = () => ({ project: 'TeamAgentOrchestrator', dir: 'D:\\workspace\\TeamAgentOrchestrator', agents: agents.map(view), clients: catalog, activity: activity.slice(0, 60),
-  emblems: ['gestao', 'planejamento', 'codigo', 'revisao', 'dados', 'pesquisa', 'visual', 'criacao', 'producao', 'ia'], tiers: ['junior', 'medium', 'senior'], clocks: [] });
+  emblems: ['gestao', 'planejamento', 'codigo', 'revisao', 'dados', 'pesquisa', 'visual', 'criacao', 'producao', 'ia'], tiers: ['junior', 'medium', 'senior'], clocks: models.clocks });
 const push = (l) => {
   l.at = now();
   (consoles[l.agent] ||= []).push(l);
@@ -55,6 +55,8 @@ function fakeRun(id, prompt) {
 }
 
 // ---- task board (mirrors internal/tasks closely enough to design the screens)
+const git = { on: true, base: 'main', prefix: 'tao/', remote: true, gh: true, off: false, reason: '' };
+const models = { auto: false, overrides: [], clocks: [{ client: 'opencode', model: 'opencode/big-pickle', until: new Date(Date.now() + 47 * 60000).toISOString(), reason: 'quota', source: 'informado' }] };
 const LABEL = { proposed: 'Proposta', ready: 'A fazer', in_progress: 'Fazendo', review: 'Em revisão', done: 'Concluída' };
 const board = { sprints: [], tasks: [] };
 const taskRun = {};
@@ -70,8 +72,9 @@ const boardView = () => ({
   sprints: board.sprints.map((s) => ({ ...s, progress: progress(s.id) })),
   active: board.sprints.find((s) => s.status === 'active')?.id || '',
   backlog: progress(''),
+  git,
   tasks: board.tasks.map((t) => ({ ...t, status_label: LABEL[t.status], assignee_name: agents.find((a) => a.id === t.assignee)?.name || '', running: !!taskRun[t.id],
-    phases: ['start', 'work', 'review', 'verdict'].map((p) => ({ phase: p, status: t.phases?.[p] || '' })) })),
+    phases: ['start', 'work', 'submit', 'pr', 'review', 'verdict', 'merge'].map((p) => ({ phase: p, status: t.phases?.[p] || '' })) })),
 });
 const changed = () => emit('board', boardView());
 const addTask = (n, by) => {
@@ -108,12 +111,23 @@ const handlers = {
   ArchiveTask: (id) => { findTask(id).archived = true; changed(); },
   ReopenTask: (id) => { Object.assign(findTask(id), { status: 'ready', verdicts: [] }); changed(); },
   SetTaskPriority: (id, high) => { findTask(id).priority = high ? 'high' : 'normal'; changed(); },
-  RunTask: (id) => work(id, (t) => { t.status = 'review'; t.summary = 'feito (simulado)'; t.phases.work = 'ok'; hist(t, t.assignee, 'enviada para revisão'); }),
+  RunTask: (id) => work(id, (t) => { t.status = 'review'; t.summary = 'feito (simulado)'; t.branch = `tao/${t.id.toLowerCase()}`; t.pr = 'https://github.com/exadmax/demo/pull/7';
+    Object.assign(t.phases, { work: 'ok', submit: 'ok', pr: 'ok' }); hist(t, t.assignee, 'enviada para revisão'); }),
   AnswerTask: (id, ans) => { const t = findTask(id); hist(t, 'diogo', `resposta: ${ans}`); t.question = ''; handlers.RunTask(id); },
   DelegateTask: (id, to) => { const t = findTask(id); t.assignee = to; t.question = ''; hist(t, 'diogo', `delegada para ${to}`); handlers.RunTask(id); },
-  ReviewTask: (id) => work(id, (t) => { t.status = 'done'; t.phases.review = 'ok'; t.phases.verdict = 'ok'; t.verdicts = ['revisor:approve']; hist(t, 'revisor', 'revisão: aprovada'); }),
+  ReviewTask: (id) => work(id, (t) => { t.approved = !!t.branch; t.status = t.branch ? 'review' : 'done'; t.phases.work = 'ok'; t.phases.review = 'ok'; t.phases.verdict = 'ok'; t.verdicts = ['revisor:approve']; hist(t, 'revisor', 'revisão: aprovada'); }),
   GenerateTasks: (agent, objective, sprint) => { fakeRun(agent, `planejar: ${objective}`);
     setTimeout(() => { ['Mapear o módulo', 'Escrever os testes', 'Portar e revisar'].forEach((title) => addTask({ title: `${title}: ${objective}`, sprint, assignee: 'engenheiro', origin: `agent:${agent}`, proposed: true }, agent)); changed(); }, 2500); },
+  MergeTask: (id) => { const t = findTask(id); t.status = 'done'; t.phases.merge = 'ok'; hist(t, 'diogo', 'merge feito'); changed(); },
+  GitStatus: () => git,
+  SetGit: (g) => { Object.assign(git, g, { on: !g.off }); changed(); return git; },
+  CanImport: () => ({ available: true, has_tasks: true }),
+  ImportCards: () => ({ agents: 11, tasks: 10, sprints: 2, warnings: [] }),
+  Models: () => ({ ...models, clients: catalog.map((c) => ({ id: c.id, name: c.name, models: c.models })) }),
+  SetAutoSwitch: (on) => { models.auto = on; },
+  SetModelOverride: (client, model, minutes, task) => { models.overrides.push({ key: task ? `${task}:${client}` : client, client, task, model, until: minutes ? new Date(Date.now() + minutes * 60000).toISOString() : null }); },
+  ClearModelOverride: (key) => { models.overrides = models.overrides.filter((o) => o.key !== key); },
+  ClearClock: (client, model) => { models.clocks = models.clocks.filter((c) => !(c.client === client && c.model === model)); },
   Snapshot: () => snapshot(),
   DetectClients: () => catalog,
   CheckUpdates: () => catalog.map((c) => ({ ...c, latest: c.version })),

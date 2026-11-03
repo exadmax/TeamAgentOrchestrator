@@ -1,15 +1,15 @@
 {
 	"fixed": {
-		"file_version": "{{.Info.ProductVersion}}"
+		"file_version": "0.3.0"
 	},
 	"info": {
-		"0000": {
-			"ProductVersion": "{{.Info.ProductVersion}}",
-			"CompanyName": "{{.Info.CompanyName}}",
-			"FileDescription": "{{.Info.ProductName}}",
-			"LegalCopyright": "{{.Info.Copyright}}",
-			"ProductName": "{{.Info.ProductName}}",
-			"Comments": "{{.Info.Comments}}"
+		"0409": {
+			"ProductVersion": "0.3.0",
+			"CompanyName": "Diogo Góes Zanetti",
+			"FileDescription": "Orquestrador de times de agentes de IA",
+			"LegalCopyright": "(c) 2026, Diogo Góes Zanetti",
+			"ProductName": "TeamAgent Orquestrador",
+			"Comments": "TeamAgent Orquestrador"
 		}
 	}
 }
