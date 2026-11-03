@@ -1,0 +1,350 @@
+{
+ "now": "2026-11-02T14:00:00",
+ "rows": [
+  {
+   "text": "Please retry in 2h39m55.26s",
+   "classify": "unknown",
+   "wait_secs": 9595,
+   "hint": "2h39m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "try again in 2 hours 3 minutes",
+   "classify": "unknown",
+   "wait_secs": 7380,
+   "hint": "2h3m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "Your limit resets in 4h",
+   "classify": "unknown",
+   "wait_secs": 14400,
+   "hint": "4h0m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "resets 3pm",
+   "classify": "unknown",
+   "wait_secs": 3600,
+   "hint": "1h0m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "resets at 15:30",
+   "classify": "unknown",
+   "wait_secs": 5400,
+   "hint": "1h30m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "resets 9am",
+   "classify": "unknown",
+   "wait_secs": 68400,
+   "hint": "19h0m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "retry after 45 seconds",
+   "classify": "unknown",
+   "wait_secs": 45,
+   "hint": "45s",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "try again in 1 hour and 30 minutes",
+   "classify": "unknown",
+   "wait_secs": 5400,
+   "hint": "1h30m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "Error 429: rate limit, retry in 30s",
+   "classify": "quota",
+   "wait_secs": 30,
+   "hint": "30s",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "You've hit your usage limit. Try again in 2 hours.",
+   "classify": "quota",
+   "wait_secs": 7200,
+   "hint": "2h0m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "RESOURCE_EXHAUSTED quota",
+   "classify": "quota",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "503 Service Unavailable",
+   "classify": "transient",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "overloaded_error",
+   "classify": "transient",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "Invalid API key",
+   "classify": "auth",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "not logged in, please run /login",
+   "classify": "auth",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "ProviderModelNotFoundError",
+   "classify": "model",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "model gpt-x does not exist",
+   "classify": "model",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "prompt is too long: 250000 tokens",
+   "classify": "context",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "content policy violation",
+   "classify": "refused",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "'claude' is not recognized as an internal or external command",
+   "classify": "launch",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "ECONNRESET socket hang up",
+   "classify": "transient",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "request timed out",
+   "classify": "transient",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "something odd happened",
+   "classify": "unknown",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "credit balance is too low",
+   "classify": "quota",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "402 Payment Required",
+   "classify": "quota",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "Free usage limit reached",
+   "classify": "quota",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "fetch failed",
+   "classify": "transient",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "temporarily unavailable",
+   "classify": "transient",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "I can't help with that",
+   "classify": "refused",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "maximum context length exceeded",
+   "classify": "context",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "resetsIn 5m",
+   "classify": "unknown",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "retry in 10 mins",
+   "classify": "unknown",
+   "wait_secs": 600,
+   "hint": "10m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "try again in 2hrs",
+   "classify": "unknown",
+   "wait_secs": 7200,
+   "hint": "2h0m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "retry in 3 secs",
+   "classify": "unknown",
+   "wait_secs": 3,
+   "hint": "3s",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "resets in 1.5h",
+   "classify": "unknown",
+   "wait_secs": 5400,
+   "hint": "1h30m",
+   "tokens": null,
+   "error_model": null
+  },
+  {
+   "text": "tokens used\n12,345",
+   "classify": "unknown",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": 12345,
+   "error_model": null
+  },
+  {
+   "text": "tokens used: 9.876",
+   "classify": "unknown",
+   "wait_secs": null,
+   "hint": null,
+   "tokens": 9876,
+   "error_model": null
+  },
+  {
+   "text": "Feito.\nPosso seguir?",
+   "question": "Feito. Posso seguir?"
+  },
+  {
+   "text": "Pronto.",
+   "question": null
+  },
+  {
+   "text": "a\nb\nqual caminho?",
+   "question": "a b qual caminho?"
+  }
+ ],
+ "fmt": [
+  {
+   "secs": 5,
+   "fmt": "0m05s",
+   "hint_secs": 65
+  },
+  {
+   "secs": 59,
+   "fmt": "0m59s",
+   "hint_secs": 119
+  },
+  {
+   "secs": 61,
+   "fmt": "1m01s",
+   "hint_secs": 120
+  },
+  {
+   "secs": 3599,
+   "fmt": "59m59s",
+   "hint_secs": 3600
+  },
+  {
+   "secs": 3600,
+   "fmt": "1h00m",
+   "hint_secs": 3900
+  },
+  {
+   "secs": 3725,
+   "fmt": "1h02m",
+   "hint_secs": 4020
+  },
+  {
+   "secs": 9000,
+   "fmt": "2h30m",
+   "hint_secs": 9300
+  }
+ ]
+}
