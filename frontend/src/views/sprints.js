@@ -54,12 +54,23 @@ export default function sprints(ctx) {
     actions.replaceChildren(...(sp ? [
       sp.status === 'planned' ? h('button.btn', { onclick: () => ctx.call('StartSprint', sp.id).then(() => toast(tr('sprints.started', { p1: sp.id }))) }, tr('sprints.start_sprint')) : null,
       sp.status !== 'closed' ? h('button.btn', { onclick: () => closeSprint(sp) }, tr('sprints.close_sprint')) : null,
-      sp.retro?.length ? h('span.small.muted', tr('sprints.retro', { p1: sp.retro.join(' · ') })) : null].filter(Boolean) : []));
+      sp.retro?.length ? h('span.small.muted', tr('sprints.retro', { p1: sp.retro.join(' · ') })) : null].filter(Boolean) : []),
+      ...flowControls(b.flow || {}));
     const opts = (s) => s.replaceChildren(...(ctx.snap.agents || []).map((a) => h('option', { value: a.id }, a.name)));
     const keepM = manualWho.value; const keepG = genWho.value;
     opts(manualWho); opts(genWho);
     manualWho.value = keepM || ctx.snap.agents?.[0]?.id || '';
     genWho.value = keepG || (ctx.snap.agents || []).find((a) => a.emblem === 'planejamento')?.id || ctx.snap.agents?.[0]?.id || '';
+  }
+
+  // The sequential flow: one card at a time, hand to hand, pausing only for the director.
+  function flowControls(f) {
+    const merge = h('input', { type: 'checkbox', checked: !!f.merge, disabled: !!f.on });
+    const state = f.on ? (f.waiting ? f.reason : tr('flow.working', { p1: f.task || '—' })) : (f.reason || tr('flow.off'));
+    return [h('span.right'),
+      f.on ? null : h('label.small', merge, ' ', tr('flow.auto_merge')),
+      h('button.btn', { onclick: () => (f.on ? ctx.call('StopFlow') : ctx.call('StartFlow', merge.checked)) }, f.on ? tr('flow.stop') : tr('flow.start')),
+      h('span.small', { style: { color: f.waiting ? 'var(--err)' : '' } }, state)].filter(Boolean);
   }
 
   async function addManual() {

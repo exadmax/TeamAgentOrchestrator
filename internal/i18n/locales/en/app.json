@@ -72,5 +72,11 @@
   "tasks.still_proposal": "%s is still a proposal: approve it first",
   "tasks.unclear_verdict": "the reviewer gave no clear verdict: %s",
   "tasks.write_answer": "write the answer",
-  "tasks.write_objective": "write the objective"
+  "tasks.write_objective": "write the objective",
+  "flow.escalate": "the review asked for changes %d times: decide how this task should continue",
+  "flow.finished": "flow finished: no card left that the team can move",
+  "flow.waiting_answer": "flow paused: %s needs the director's answer",
+  "flow.waiting_merge": "flow paused: %s is approved and waits for your merge",
+  "flow.step_failed": "the flow could not continue: %s",
+  "flow.busy": "the flow is working on %s: one card at a time"
 }

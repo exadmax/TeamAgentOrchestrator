@@ -435,5 +435,11 @@
   "welcome.title": "Boas-vindas",
   "welcome.heading": "Nenhum projeto aberto",
   "welcome.text": "Escolha a pasta de um projeto (de preferência um repositório git). Se ela não tiver tao.json, ganha um time inicial.",
-  "welcome.open": "Abrir projeto…"
+  "welcome.open": "Abrir projeto…",
+  "flow.start": "Rodar fluxo",
+  "flow.stop": "Parar fluxo",
+  "flow.auto_merge": "fazer merge dos aprovados",
+  "flow.working": "fluxo ligado: trabalhando em {p1}",
+  "flow.off": "fluxo desligado",
+  "mock.flow_finished": "fluxo concluído"
 }

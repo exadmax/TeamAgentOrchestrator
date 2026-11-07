@@ -123,6 +123,21 @@ func text(fields map[string]any, key string) string {
 	return s
 }
 
+// strList reads a YAML list of strings (deps: ["T030"]); anything else is empty.
+func strList(value any) []string {
+	list, _ := value.([]any)
+	out := []string{}
+	for _, v := range list {
+		if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
+			out = append(out, strings.TrimSpace(s))
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 func question(value any) string {
 	list, ok := value.([]any)
 	if !ok || len(list) == 0 {
@@ -204,7 +219,7 @@ func Import(dir, projectName string, now time.Time) (*team.Team, *tasks.Board, R
 			continue
 		}
 		seen[id] = true
-		task := tasks.Task{ID: id, Title: text(fields, "title"), Done: text(fields, "done"), Assignee: text(fields, "role"), Sprint: text(fields, "sprint"), Status: tasks.Status(text(fields, "status")), Priority: tasks.Normal, Origin: "import:docs/tasks/" + filepath.Base(file), Summary: text(fields, "summary"), Branch: text(fields, "branch"), Question: question(fields["questions"]), Created: now, Updated: now}
+		task := tasks.Task{ID: id, Title: text(fields, "title"), Done: text(fields, "done"), Assignee: text(fields, "role"), Sprint: text(fields, "sprint"), Status: tasks.Status(text(fields, "status")), Priority: tasks.Normal, Origin: "import:docs/tasks/" + filepath.Base(file), Summary: text(fields, "summary"), Branch: text(fields, "branch"), Question: question(fields["questions"]), Deps: strList(fields["deps"]), Created: now, Updated: now}
 		if !known[task.Assignee] {
 			report.Warnings = append(report.Warnings, i18n.T("importer.unknown_role", id, task.Assignee))
 			task.Assignee = ""
