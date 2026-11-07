@@ -72,5 +72,11 @@
   "tasks.still_proposal": "%s ainda é uma proposta: aprove antes",
   "tasks.unclear_verdict": "o revisor não deu um parecer claro: %s",
   "tasks.write_answer": "escreva a resposta",
-  "tasks.write_objective": "escreva o objetivo"
+  "tasks.write_objective": "escreva o objetivo",
+  "flow.escalate": "a revisão pediu mudanças %d vezes: decida como esta tarefa deve seguir",
+  "flow.finished": "fluxo concluído: nenhum cartão restante que o time consiga mover",
+  "flow.waiting_answer": "fluxo pausado: %s precisa da resposta do diretor",
+  "flow.waiting_merge": "fluxo pausado: %s foi aprovada e espera o seu merge",
+  "flow.step_failed": "o fluxo não conseguiu continuar: %s",
+  "flow.busy": "o fluxo está trabalhando em %s: um cartão por vez"
 }

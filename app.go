@@ -109,7 +109,9 @@ type App struct {
 	repo     *gitflow.Repo   // nil = no git flow (not a repo, or turned off)
 	gitView  GitView
 
-	bmu sync.Mutex // serializes read-modify-write of tao.tasks.json
+	bmu  sync.Mutex // serializes read-modify-write of tao.tasks.json
+	fmu  sync.Mutex // one flow step at a time
+	flow FlowView   // the sequential workflow (guarded by mu)
 }
 
 func NewApp() *App {

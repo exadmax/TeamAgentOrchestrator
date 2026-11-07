@@ -119,5 +119,9 @@
   "tasks.event.review_approved_note": "review: approved: %s",
   "tasks.event.review_merge_pending_note": "review: approved; merge pending: %s",
   "stream.tool_error": "tool error",
-  "stream.usage_limit": "usage limit: %s (%s)"
+  "stream.usage_limit": "usage limit: %s (%s)",
+  "tasks.deps_open": "task %s waits for %s to be done",
+  "tasks.dep_self": "task %s cannot depend on itself",
+  "tasks.dep_cycle": "%s depending on %s would create a cycle",
+  "tasks.event.deps": "dependencies: %s"
 }

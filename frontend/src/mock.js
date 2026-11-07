@@ -72,7 +72,9 @@ const progress = (sid) => {
   const done = ts_.filter((t) => t.status === 'done').length;
   return { done, total: ts_.length, pct: ts_.length ? Math.round((done * 100) / ts_.length) : 0, blocked: ts_.filter((t) => t.question).map((t) => t.id) };
 };
+let flow = { on: false };
 const boardView = () => ({
+  flow,
   sprints: board.sprints.map((s) => ({ ...s, progress: progress(s.id) })),
   active: board.sprints.find((s) => s.status === 'active')?.id || '',
   backlog: progress(''),
@@ -123,6 +125,9 @@ const handlers = {
     return language();
   },
   Board: () => boardView(),
+  StartFlow: (merge) => { flow = { on: true, merge, task: '', waiting: false }; changed(); },
+  StopFlow: () => { flow = { on: false, reason: tr('mock.flow_finished') }; changed(); },
+  SetTaskDeps: (id, deps) => { findTask(id).deps = deps; changed(); },
   NewSprint: (title, goal) => { board.sprints.push({ id: `S${board.sprints.length + 1}`, title, goal, status: 'planned', created: ts() }); changed(); },
   StartSprint: (id) => { if (board.sprints.some((s) => s.status === 'active')) throw new Error(tr('mock.a_sprint_is_already_active')); board.sprints.find((s) => s.id === id).status = 'active'; changed(); },
   CloseSprint: (id, retro, carry) => { const s = board.sprints.find((x) => x.id === id); s.status = 'closed'; s.retro = retro;

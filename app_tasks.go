@@ -47,6 +47,7 @@ type BoardView struct {
 	Active  string         `json:"active"`
 	Backlog tasks.Progress `json:"backlog"`
 	Git     GitView        `json:"git"`
+	Flow    FlowView       `json:"flow"`
 }
 
 // noGitPhases is the pipeline of a project without the git flow: no submit, PR or merge.
@@ -83,7 +84,7 @@ func (a *App) board(f func(b *tasks.Board) error) error {
 func (a *App) Board() BoardView {
 	a.bmu.Lock()
 	a.mu.Lock()
-	dir, st, t, gv := a.dir, a.store, a.team, a.gitView
+	dir, st, t, gv, fv := a.dir, a.store, a.team, a.gitView, a.flow
 	running := map[string]bool{}
 	for id := range a.taskRuns {
 		running[id] = true
@@ -94,7 +95,7 @@ func (a *App) Board() BoardView {
 	if err != nil || t == nil {
 		return BoardView{Sprints: []SprintView{}, Tasks: []TaskView{}}
 	}
-	v := BoardView{Backlog: b.Progress(""), Sprints: []SprintView{}, Tasks: []TaskView{}, Git: gv} // [] not null for the UI
+	v := BoardView{Backlog: b.Progress(""), Sprints: []SprintView{}, Tasks: []TaskView{}, Git: gv, Flow: fv} // [] not null for the UI
 	phases := noGitPhases
 	if gv.On {
 		phases = store.Phases
@@ -173,6 +174,11 @@ func (a *App) ReopenTask(id, reason string) error {
 	return err
 }
 
+// SetTaskDeps sets the cards this one waits for; the flow and Start refuse it while they are open.
+func (a *App) SetTaskDeps(id string, deps []string) error {
+	return a.board(func(b *tasks.Board) error { return b.SetDeps(id, deps, human, time.Now()) })
+}
+
 func (a *App) SetTaskPriority(id string, high bool) error {
 	p := tasks.Normal
 	if high {
@@ -214,6 +220,9 @@ func (a *App) RunTask(id string) error { return a.runTask(id, "", 0) }
 
 // runTask runs the task once; switches counts the hops already made to another model or the reserve.
 func (a *App) runTask(id, note string, switches int) error {
+	if err := a.flowBusy(id); err != nil {
+		return err
+	}
 	var tk tasks.Task
 	if err := a.board(func(b *tasks.Board) error {
 		t, ok := b.Task(id)
@@ -257,6 +266,7 @@ func (a *App) runTask(id, note string, switches int) error {
 	a.setTaskRun(id, true)
 	err = a.launch(ag.ID, ag.Client, model, prompt, fmt.Sprintf("[%s] %s", id, tk.Title), id, workDir, func(o Outcome) {
 		a.setTaskRun(id, false)
+		defer a.kick() // the work is handed on: review, a retry or the director
 		now := time.Now()
 		switch {
 		case o.Kind != "" && switches < maxSwitches && a.switchable(o.Kind):
@@ -327,6 +337,9 @@ func (a *App) DelegateTask(id, to, note string) error {
 
 // ReviewTask asks a reviewer (the task's, or one picked from another client) to approve or not.
 func (a *App) ReviewTask(id string) error {
+	if err := a.flowBusy(id); err != nil {
+		return err
+	}
 	var tk tasks.Task
 	if err := a.board(func(b *tasks.Board) error {
 		t, ok := b.Task(id)
@@ -387,9 +400,14 @@ func (a *App) ReviewTask(id string) error {
 	a.setTaskRun(id, true)
 	err = a.launch(rev.ID, rev.Client, model, prompt, i18n.T("tasks.review_label", id), id, workDir, func(o Outcome) {
 		a.setTaskRun(id, false)
+		defer a.kick() // approved goes to merge, changes go back to the assignee
 		now := time.Now()
 		if o.Kind != "" {
 			a.warn(id, st.Mark(id, "review", "failed", store.PhaseInfo{Agent: rev.ID, Client: rev.Client, Model: model, Detail: string(o.Kind)}))
+			// without this the flow would retry the review forever: the director sees the failure
+			a.warn(id, a.board(func(b *tasks.Board) error {
+				return b.Ask(id, rev.ID, i18n.T("tasks.failed", o.Kind, failure.Help(o.Kind)), now)
+			}))
 			return
 		}
 		approve, note, ok := parseVerdict(o.Final)

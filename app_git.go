@@ -201,7 +201,11 @@ func (a *App) MergeTask(id string) error {
 	}
 	a.warn(id, st.Mark(id, "merge", "ok", store.PhaseInfo{Detail: i18n.T("git.merged_into", repo.Base)}))
 	a.push(Line{Agent: id, Kind: "end", Text: i18n.T("git.merged_line", id, repo.Base)})
-	return a.board(func(b *tasks.Board) error { return b.Merged(id, human, time.Now()) })
+	if err := a.board(func(b *tasks.Board) error { return b.Merged(id, human, time.Now()) }); err != nil {
+		return err
+	}
+	a.kick() // the card is closed: the flow hands the next one over
+	return nil
 }
 
 // reviewContext tells the reviewer where the change is: the diff of the task branch.

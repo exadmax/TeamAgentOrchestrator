@@ -85,6 +85,7 @@ type Task struct {
 	Assignee string    `json:"assignee"`
 	Reviewer string    `json:"reviewer,omitempty"`
 	Sprint   string    `json:"sprint,omitempty"`
+	Deps     []string  `json:"deps,omitempty"`
 	Status   Status    `json:"status"`
 	Priority Priority  `json:"priority"`
 	Origin   string    `json:"origin"`
@@ -321,6 +322,7 @@ func cloneTask(t Task) Task {
 		t.History[i].Args = append([]string(nil), t.History[i].Args...)
 	}
 	t.Verdicts = append([]string(nil), t.Verdicts...)
+	t.Deps = append([]string(nil), t.Deps...)
 	return t
 }
 func (b *Board) taskIndex(id string) (int, error) {
@@ -402,6 +404,9 @@ func (b *Board) Start(id, by string, now time.Time) error {
 	return b.mutate(id, by, now, func(t *Task) (Event, error) {
 		if e := require(t, Ready, InProgress); e != nil {
 			return Event{}, e
+		}
+		if open := b.DepsOpen(*t); len(open) > 0 {
+			return Event{}, i18n.Err("tasks.deps_open", t.ID, strings.Join(open, ", "))
 		}
 		t.Approved = false
 		t.Status = InProgress
